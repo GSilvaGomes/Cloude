@@ -373,10 +373,11 @@ tail -f 8-md.log         # progresso da produção em tempo real (Ctrl + C sai)
 scancel <número_do_job>  # cancelar o job, se precisar
 ```
 
-**15.5 — Se a produção parar no meio** (ex.: estourou o `--time`), criar um job de continuação `md_dk2_cont.job` com o mesmo cabeçalho `#SBATCH` (trocando `--job-name`, `--output` e `--error` para `md_dk2_cont`) e só esta linha de execução:
+**15.5 — Se a produção parar no meio** (ex.: estourou o `--time`), criar um job de continuação `md_dk2_cont.job` com o mesmo cabeçalho `#SBATCH` (trocando `--job-name`, `--output` e `--error` para `md_dk2_cont`) e só estas linhas de execução:
 
 ```bash
-gmx_mpi mdrun -deffnm 8-md -cpi 8-md.cpt -ntomp $NT >> 8-md_run.log 2>&1
+cd $SLURM_SUBMIT_DIR
+gmx_mpi mdrun -deffnm 8-md -cpi 8-md.cpt -ntomp $SLURM_CPUS_PER_TASK >> 8-md_run.log 2>&1
 ```
 
 E submeter com `sbatch md_dk2_cont.job`.
