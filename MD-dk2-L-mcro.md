@@ -13,15 +13,16 @@
 
 ## ETAPA 0 — Organizar a pasta de trabalho
 
-Todos os comandos são rodados **de dentro desta mesma pasta**.
+Todos os comandos são rodados **de dentro da pasta do sistema** (`MD_dk2/`). Os arquivos `.mdp` ficam na pasta de cima (`../`).
 
 ```
-MD_dk2/
-├── charmm36.ff/              # veio do zip do CGenFF (contém L-m_ffbonded.itp)
-├── TRPA1_AF3_Y_dk2.pdb       # proteína (pose do docking, SEM o ligante)
-├── L-mcro_dk2_gmx.pdb        # ligante (pose do docking)
-├── L-mcro_dk2_gmx.top        # topologia do ligante gerada pelo CGenFF
-└── ions.mdp  em.mdp  nvt.mdp  npt.mdp  md.mdp   # (conteúdo no final deste arquivo)
+pasta_mdp/
+├── ions.mdp  minim.mdp  nvt.mdp  npt.mdp  md.mdp   # (conteúdo no final deste arquivo)
+└── MD_dk2/
+    ├── charmm36.ff/              # veio do zip do CGenFF (contém L-m_ffbonded.itp)
+    ├── TRPA1_AF3_Y_dk2.pdb       # proteína (pose do docking, SEM o ligante)
+    ├── L-mcro_dk2_gmx.pdb        # ligante (pose do docking)
+    └── L-mcro_dk2_gmx.top        # topologia do ligante gerada pelo CGenFF
 ```
 
 Conferir se o arquivo de parâmetros do ligante está dentro da pasta do campo de força:
@@ -29,6 +30,8 @@ Conferir se o arquivo de parâmetros do ligante está dentro da pasta do campo d
 ```bash
 ls charmm36.ff/L-m_ffbonded.itp
 ```
+
+> No cluster o executável é `gmx_mpi` (em vez de `gmx`). Usar sempre o mesmo em todas as etapas.
 
 ---
 
@@ -49,12 +52,12 @@ O `output_TRPA1_AF3_Y_dk2.txt` é usado para responder às perguntas do `pdb2gmx
 ## ETAPA 2 — Topologia da proteína
 
 ```bash
-gmx pdb2gmx -f TRPA1_AF3_Y_dk2.pdb -ff charmm36 -water tip3p -ignh -lys -his -asp -glu -ter -o protein.gro
+gmx_mpi pdb2gmx -f TRPA1_AF3_Y_dk2.pdb -ff charmm36 -water tip3p -ignh -lys -his -asp -glu -ter -o 0-protein.gro
 ```
 
 - Se aparecer uma lista de campos de força, escolher o que diz **"from current directory"**.
 - Responder LYS / HIS / ASP / GLU / terminais conforme o `output_TRPA1_AF3_Y_dk2.txt`.
-- Arquivos gerados: `protein.gro`, `topol.top`, `posre.itp` (ou `topol_Protein_chain_X.itp` e `posre_Protein_chain_X.itp` se houver várias cadeias).
+- Arquivos gerados: `0-protein.gro`, `topol.top`, `posre.itp` (ou `topol_Protein_chain_X.itp` e `posre_Protein_chain_X.itp` se houver várias cadeias).
 
 ---
 
@@ -87,19 +90,18 @@ grep -c LMC L-mcro_dk2_gmx.pdb               # deve mostrar: 116
 **3.4 — Converter o ligante para `.gro`:**
 
 ```bash
-gmx editconf -f L-mcro_dk2_gmx.pdb -o lig.gro
+gmx_mpi editconf -f L-mcro_dk2_gmx.pdb -o lig.gro
 ```
 
-**3.5 — Restrição de posição do ligante** (usada no NVT/NPT):
+**3.5 — Restrição de posição do ligante** (usada no NVT/NPT; fazer logo após a 3.4 e antes da Etapa 4):
 
 ```bash
-gmx make_ndx -f lig.gro -o index_lig.ndx
-> 0 & ! a H*
+gmx_mpi make_ndx -f lig.gro -o index_lig.ndx
+> 0 & ! a H*        # cria o grupo 3 "System_&_!H*" (só átomos pesados)
 > q
-gmx genrestr -f lig.gro -n index_lig.ndx -o posre_lig.itp -fc 1000 1000 1000
+gmx_mpi genrestr -f lig.gro -n index_lig.ndx -o posre_lig.itp -fc 1000 1000 1000
+# escolher o grupo 3 (System_&_!H*)
 ```
-
-No `genrestr`, escolher o grupo novo (`System_&_!H*`, átomos pesados).
 
 ---
 
@@ -137,7 +139,7 @@ Abrir com `nano topol.top` e fazer **4 alterações**:
 #include "./charmm36.ff/tip3p.itp"
 ```
 
-**4.4 — No final, em `[ molecules ]`, adicionar o ligante logo após a proteína:**
+**4.4 — No final, em `[ molecules ]`, adicionar o ligante logo após a proteína (depois da última cadeia):**
 
 ```
 [ molecules ]
@@ -153,35 +155,37 @@ Salvar: `Ctrl + O`, `Enter`, `Ctrl + X`.
 ## ETAPA 5 — Montar o complexo proteína + ligante
 
 ```bash
-head -n -1 protein.gro > complex.gro           # proteína sem a linha da caixa
-sed -n '3,118p' lig.gro >> complex.gro          # 116 átomos do ligante
-tail -n 1 protein.gro >> complex.gro            # linha da caixa
-N=$(( $(sed -n 2p protein.gro) + 116 ))
-sed -i "2s/.*/$N/" complex.gro                  # corrige o número total de átomos
+head -n -1 0-protein.gro > 0-complex.gro        # proteína sem a linha da caixa
+sed -n '3,118p' lig.gro >> 0-complex.gro         # 116 átomos do ligante
+tail -n 1 0-protein.gro >> 0-complex.gro         # linha da caixa
+N=$(( $(sed -n 2p 0-protein.gro) + 116 ))
+sed -i "2s/.*/$N/" 0-complex.gro                 # corrige o número total de átomos
 ```
 
-Conferir visualmente (PyMOL/VMD) se o ligante está no sítio do docking:
+Conferência visual (opcional) — abrir no PyMOL/VMD e ver se o ligante está no sítio do docking, inteiro e sem sobreposição com a proteína:
 
 ```bash
-gmx editconf -f complex.gro -o complex_check.pdb
+gmx_mpi editconf -f 0-complex.gro -o 0-complex_check.pdb
 ```
 
 ---
 
 ## ETAPA 6 — Caixa (1.2 nm)
 
+⚠️ Usar o **complexo** (`0-complex.gro`), não o `0-protein.gro` — senão o ligante fica fora do sistema.
+
 ```bash
-gmx editconf -f complex.gro -o box.gro -c -d 1.2 -bt dodecahedron
+gmx_mpi editconf -f 0-complex.gro -o 1-box.gro -bt triclinic -d 1.2 -c
 ```
 
-(Para caixa cúbica: `-bt cubic`.)
+(Alternativa com menos água e mais rápida: `-bt dodecahedron`.)
 
 ---
 
 ## ETAPA 7 — Solvatação (TIP3P)
 
 ```bash
-gmx solvate -cp box.gro -cs spc216.gro -p topol.top -o solv.gro
+gmx_mpi solvate -cp 1-box.gro -cs spc216.gro -p topol.top -o 2-solvate.gro
 ```
 
 ---
@@ -189,33 +193,21 @@ gmx solvate -cp box.gro -cs spc216.gro -p topol.top -o solv.gro
 ## ETAPA 8 — Íons (NaCl 0,1 M + neutralização)
 
 ```bash
-gmx grompp -f ions.mdp -c solv.gro -p topol.top -o ions.tpr -maxwarn 1
-gmx genion -s ions.tpr -o solv_ions.gro -p topol.top -pname NA -nname CL -neutral -conc 0.1
+gmx_mpi grompp -f ../ions.mdp -c 2-solvate.gro -p topol.top -o 3-ions.tpr -po 3-ions-out.mdp
+gmx_mpi genion -s 3-ions.tpr -o 4-solv_ions.gro -p topol.top -pname NA -nname CL -neutral -conc 0.1
+# escolher o grupo SOL
 ```
 
-Grupo a substituir: **SOL**.
+Só se o `grompp` parar por aviso de carga total diferente de zero, acrescentar `-maxwarn 1`.
 
 ---
 
-## ETAPA 9 — Minimização de energia
+## ETAPA 9 — Grupos de índice (Protein_LMC)
+
+Criar o `index.ndx` **antes da minimização**, porque todos os `grompp` seguintes usam `-n index.ndx`:
 
 ```bash
-gmx grompp -f em.mdp -c solv_ions.gro -p topol.top -o em.tpr
-gmx mdrun -v -deffnm em
-```
-
-Conferir: `Fmax < 1000` e energia potencial negativa no final.
-
-```bash
-gmx energy -f em.edr -o potential.xvg      # escolher "Potential"
-```
-
----
-
-## ETAPA 10 — Grupos de índice (Protein_LMC)
-
-```bash
-gmx make_ndx -f em.gro -o index.ndx
+gmx_mpi make_ndx -f 4-solv_ions.gro -o index.ndx
 > 1 | 13        # 1 = Protein; 13 = LMC (conferir o número do grupo LMC na lista)
 > q
 ```
@@ -224,15 +216,30 @@ Isso cria o grupo `Protein_LMC`. `Water_and_ions` já existe por padrão.
 
 ---
 
+## ETAPA 10 — Minimização de energia
+
+```bash
+gmx_mpi grompp -f ../minim.mdp -c 4-solv_ions.gro -p topol.top -n index.ndx -o 5-minim.tpr -po 5-minim-out.mdp
+gmx_mpi mdrun -v -deffnm 5-minim > 5-minim_run.log 2>&1
+```
+
+Conferir: `Fmax < 1000` e energia potencial negativa no final.
+
+```bash
+gmx_mpi energy -f 5-minim.edr -o 5-potential.xvg      # escolher "Potential"
+```
+
+---
+
 ## ETAPA 11 — Equilíbrio NVT (100 ps)
 
 ```bash
-gmx grompp -f nvt.mdp -c em.gro -r em.gro -p topol.top -n index.ndx -o nvt.tpr
-gmx mdrun -v -deffnm nvt
+gmx_mpi grompp -f ../nvt.mdp -c 5-minim.gro -r 5-minim.gro -p topol.top -n index.ndx -o 6-nvt.tpr -po 6-nvt-out.mdp
+gmx_mpi mdrun -v -deffnm 6-nvt > 6-nvt_run.log 2>&1
 ```
 
 ```bash
-gmx energy -f nvt.edr -o temperature.xvg   # escolher "Temperature"
+gmx_mpi energy -f 6-nvt.edr -o 6-temperature.xvg      # escolher "Temperature"
 ```
 
 ---
@@ -240,13 +247,13 @@ gmx energy -f nvt.edr -o temperature.xvg   # escolher "Temperature"
 ## ETAPA 12 — Equilíbrio NPT (100 ps)
 
 ```bash
-gmx grompp -f npt.mdp -c nvt.gro -r nvt.gro -t nvt.cpt -p topol.top -n index.ndx -o npt.tpr
-gmx mdrun -v -deffnm npt
+gmx_mpi grompp -f ../npt.mdp -c 6-nvt.gro -r 6-nvt.gro -t 6-nvt.cpt -p topol.top -n index.ndx -o 7-npt.tpr -po 7-npt-out.mdp
+gmx_mpi mdrun -v -deffnm 7-npt > 7-npt_run.log 2>&1
 ```
 
 ```bash
-gmx energy -f npt.edr -o pressure.xvg      # escolher "Pressure"
-gmx energy -f npt.edr -o density.xvg       # escolher "Density"
+gmx_mpi energy -f 7-npt.edr -o 7-pressure.xvg         # escolher "Pressure"
+gmx_mpi energy -f 7-npt.edr -o 7-density.xvg          # escolher "Density"
 ```
 
 ---
@@ -254,14 +261,14 @@ gmx energy -f npt.edr -o density.xvg       # escolher "Density"
 ## ETAPA 13 — Produção (100 ns)
 
 ```bash
-gmx grompp -f md.mdp -c npt.gro -t npt.cpt -p topol.top -n index.ndx -o md.tpr
-gmx mdrun -v -deffnm md
+gmx_mpi grompp -f ../md.mdp -c 7-npt.gro -t 7-npt.cpt -p topol.top -n index.ndx -o 8-md.tpr -po 8-md-out.mdp
+gmx_mpi mdrun -v -deffnm 8-md > 8-md_run.log 2>&1
 ```
 
 Se a simulação parar, continuar de onde parou:
 
 ```bash
-gmx mdrun -v -deffnm md -cpi md.cpt
+gmx_mpi mdrun -v -deffnm 8-md -cpi 8-md.cpt >> 8-md_run.log 2>&1
 ```
 
 ---
@@ -271,15 +278,15 @@ gmx mdrun -v -deffnm md -cpi md.cpt
 Centralizar e corrigir a periodicidade:
 
 ```bash
-gmx trjconv -s md.tpr -f md.xtc -n index.ndx -o md_center.xtc -center -pbc mol -ur compact
+gmx_mpi trjconv -s 8-md.tpr -f 8-md.xtc -n index.ndx -o 9-md_center.xtc -center -pbc mol -ur compact
 # centralizar: Protein_LMC | saída: System
 ```
 
 RMSD da proteína e do ligante:
 
 ```bash
-gmx rms -s md.tpr -f md_center.xtc -n index.ndx -o rmsd_protein.xvg -tu ns   # Backbone / Backbone
-gmx rms -s md.tpr -f md_center.xtc -n index.ndx -o rmsd_lig.xvg -tu ns       # Backbone / LMC
+gmx_mpi rms -s 8-md.tpr -f 9-md_center.xtc -n index.ndx -o 9-rmsd_protein.xvg -tu ns   # Backbone / Backbone
+gmx_mpi rms -s 8-md.tpr -f 9-md_center.xtc -n index.ndx -o 9-rmsd_lig.xvg -tu ns       # Backbone / LMC
 ```
 
 ---
@@ -301,7 +308,7 @@ rvdw            = 1.2
 pbc             = xyz
 ```
 
-### em.mdp
+### minim.mdp
 
 ```
 integrator      = steep
