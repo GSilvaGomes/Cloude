@@ -297,6 +297,67 @@ As Etapas 0 a 9 são feitas **à mão no terminal** porque têm perguntas intera
 
 Antes de submeter, conferir se estes arquivos estão na pasta do sistema: `4-solv_ions.gro`, `topol.top`, `index.ndx`, `posre*.itp`, `L-mcro_dk2_gmx.itp`, `charmm36.ff/` — e os `.mdp` em `../`.
 
+### Passo a passo no terminal do Ubuntu
+
+**1. Abrir o terminal:** `Ctrl + Alt + T`.
+
+**2. Entrar no servidor Vital por SSH** (trocar pelo seu usuário e o endereço do Vital):
+
+```bash
+ssh seu_usuario@endereco_do_vital
+```
+
+Digitar a senha (ela não aparece enquanto você digita; é normal) e apertar `Enter`.
+
+**3. Ir até a pasta do sistema:**
+
+```bash
+cd ~/caminho/pasta_mdp/MD_dk2
+pwd          # confirma em que pasta você está
+ls           # confirma se 4-solv_ions.gro, topol.top, index.ndx... estão aqui
+ls ../*.mdp  # confirma se os .mdp estão na pasta de cima
+```
+
+**4. Criar o arquivo do job com o nano:**
+
+```bash
+nano md_dk2.job
+```
+
+Abre uma tela de edição vazia.
+
+**5. Colar o script** (conteúdo do item 15.2 abaixo): copiar o texto e, no terminal, colar com `Ctrl + Shift + V` (ou botão direito → Colar). No terminal, `Ctrl + V` sozinho não cola.
+
+**6. Salvar e sair do nano:**
+- `Ctrl + O` → aparece `File Name to Write: md_dk2.job` → apertar `Enter`
+- `Ctrl + X` para sair
+
+**7. Conferir se o arquivo ficou certo:**
+
+```bash
+cat md_dk2.job
+```
+
+Se o script foi copiado de um arquivo do Windows, corrigir as quebras de linha (senão o Slurm dá erro estranho):
+
+```bash
+sed -i 's/\r$//' md_dk2.job
+```
+
+**8. Submeter e acompanhar** (itens 15.3 e 15.4 abaixo):
+
+```bash
+sbatch md_dk2.job
+squeue -u $USER
+```
+
+**9. Pode fechar o terminal.** O job continua rodando no servidor. Para voltar e ver o andamento, repetir os passos 1–3 e usar `cat md_dk2.out` / `tail -f 8-md.log`.
+
+> **Alternativa:** criar o `md_dk2.job` no seu computador (com `nano md_dk2.job` no terminal local) e enviar para o Vital:
+> ```bash
+> scp md_dk2.job seu_usuario@endereco_do_vital:~/caminho/pasta_mdp/MD_dk2/
+> ```
+
 **15.1 — Criar o arquivo do job** (dentro da pasta do sistema):
 
 ```bash
@@ -381,6 +442,21 @@ gmx_mpi mdrun -deffnm 8-md -cpi 8-md.cpt -ntomp $SLURM_CPUS_PER_TASK >> 8-md_run
 ```
 
 E submeter com `sbatch md_dk2_cont.job`.
+
+**15.6 — Rodar direto no seu Ubuntu (sem Slurm)**
+
+Se for rodar num computador próprio com Ubuntu (sem `sbatch`), usar o mesmo script como `.sh`:
+
+```bash
+cp md_dk2.job md_dk2.sh
+chmod +x md_dk2.sh                        # dá permissão para executar
+nohup ./md_dk2.sh > md_dk2.out 2> md_dk2.err &
+```
+
+- As linhas `#SBATCH` são ignoradas (viram comentário).
+- Trocar `NT=${SLURM_CPUS_PER_TASK:-16}` pelo número de núcleos do computador (ver com `nproc`), e `cd $SLURM_SUBMIT_DIR` por `cd "$(dirname "$0")"`.
+- Se no seu computador o executável for `gmx` (e não `gmx_mpi`), trocar em todo o script: `sed -i 's/gmx_mpi/gmx/g' md_dk2.sh`.
+- O `nohup ... &` deixa rodando mesmo se fechar o terminal. Acompanhar com `tail -f 8-md.log`; ver se ainda está rodando com `ps aux | grep mdrun`; parar com `kill <PID>`.
 
 ---
 
