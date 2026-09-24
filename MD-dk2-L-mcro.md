@@ -31,3 +31,7 @@ python3 Output-ProtonationPDB2PQR.py TRPA1_AF3_Y_dk2.log TRPA1_AF3_Y_dk2.pqr 7 >
 
 ## Topologia proteína
 
+```bash
+gmx pdb2gmx -f TRPA1_AF3_Y_dk2.pdb -water tip3p -ignh -lys -his -asp -glu -ter -o conf.pdb
+```
+
