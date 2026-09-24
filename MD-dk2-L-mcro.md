@@ -291,6 +291,98 @@ gmx_mpi rms -s 8-md.tpr -f 9-md_center.xtc -n index.ndx -o 9-rmsd_lig.xvg -tu ns
 
 ---
 
+## ETAPA 15 — Rodar da minimização à produção no Slurm (servidor Vital)
+
+As Etapas 0 a 9 são feitas **à mão no terminal** porque têm perguntas interativas (`pdb2gmx`, `genion`, `make_ndx`). Da minimização (Etapa 10) até a produção (Etapa 13) não há perguntas, então tudo roda de uma vez em um **job do Slurm**.
+
+Antes de submeter, conferir se estes arquivos estão na pasta do sistema: `4-solv_ions.gro`, `topol.top`, `index.ndx`, `posre*.itp`, `L-mcro_dk2_gmx.itp`, `charmm36.ff/` — e os `.mdp` em `../`.
+
+**15.1 — Criar o arquivo do job** (dentro da pasta do sistema):
+
+```bash
+nano md_dk2.job
+```
+
+**15.2 — Colar o conteúdo abaixo:**
+
+```bash
+#!/bin/bash -l
+
+#SBATCH --job-name=md_dk2
+#SBATCH --output=md_dk2.out
+#SBATCH --error=md_dk2.err
+#SBATCH --mem=64G
+#SBATCH --time=168:00:00
+#SBATCH --cpus-per-task=16
+
+# Para o job se algum comando der erro (não segue para a próxima etapa)
+set -e
+
+# Entra na pasta de onde o job foi submetido
+cd $SLURM_SUBMIT_DIR
+
+# Se no Vital o GROMACS for carregado por módulo, descomentar e ajustar:
+# module load gromacs
+
+NT=${SLURM_CPUS_PER_TASK:-16}
+
+echo "Início: $(date)"
+
+# ---------- Minimização ----------
+gmx_mpi grompp -f ../minim.mdp -c 4-solv_ions.gro -p topol.top -n index.ndx -o 5-minim.tpr -po 5-minim-out.mdp
+gmx_mpi mdrun -deffnm 5-minim -ntomp $NT > 5-minim_run.log 2>&1
+echo "Minimização OK: $(date)"
+
+# ---------- Equilíbrio NVT ----------
+gmx_mpi grompp -f ../nvt.mdp -c 5-minim.gro -r 5-minim.gro -p topol.top -n index.ndx -o 6-nvt.tpr -po 6-nvt-out.mdp
+gmx_mpi mdrun -deffnm 6-nvt -ntomp $NT > 6-nvt_run.log 2>&1
+echo "NVT OK: $(date)"
+
+# ---------- Equilíbrio NPT ----------
+gmx_mpi grompp -f ../npt.mdp -c 6-nvt.gro -r 6-nvt.gro -t 6-nvt.cpt -p topol.top -n index.ndx -o 7-npt.tpr -po 7-npt-out.mdp
+gmx_mpi mdrun -deffnm 7-npt -ntomp $NT > 7-npt_run.log 2>&1
+echo "NPT OK: $(date)"
+
+# ---------- Produção ----------
+gmx_mpi grompp -f ../md.mdp -c 7-npt.gro -t 7-npt.cpt -p topol.top -n index.ndx -o 8-md.tpr -po 8-md-out.mdp
+gmx_mpi mdrun -deffnm 8-md -ntomp $NT > 8-md_run.log 2>&1
+echo "Produção OK: $(date)"
+```
+
+Salvar e sair: `Ctrl + O`, `Enter`, `Ctrl + X`.
+
+> - `--mem`: o tutorial do Vital recomenda bastante memória (512G), mas o GROMACS usa pouca; 64G é mais que suficiente e o job tende a entrar na fila mais rápido.
+> - `--time` e `--cpus-per-task`: ajustar conforme os limites do Vital. O tempo precisa cobrir os 100 ns (ver quantos ns/dia aparecem no final do `7-npt.log` para estimar).
+> - O `-v` foi retirado do `mdrun` porque, no job, ele só enche o `.err`. O progresso fica nos arquivos `.log` de cada etapa.
+
+**15.3 — Submeter o job:**
+
+```bash
+sbatch md_dk2.job
+```
+
+Aparece `Submitted batch job <número>`.
+
+**15.4 — Acompanhar:**
+
+```bash
+squeue -u $USER          # ST: R = rodando | CD = terminou | F = falhou
+cat md_dk2.out           # mostra quais etapas já terminaram (Minimização OK, NVT OK...)
+cat md_dk2.err           # erros, se algo falhar
+tail -f 8-md.log         # progresso da produção em tempo real (Ctrl + C sai)
+scancel <número_do_job>  # cancelar o job, se precisar
+```
+
+**15.5 — Se a produção parar no meio** (ex.: estourou o `--time`), criar um job de continuação `md_dk2_cont.job` com o mesmo cabeçalho `#SBATCH` (trocando `--job-name`, `--output` e `--error` para `md_dk2_cont`) e só esta linha de execução:
+
+```bash
+gmx_mpi mdrun -deffnm 8-md -cpi 8-md.cpt -ntomp $NT >> 8-md_run.log 2>&1
+```
+
+E submeter com `sbatch md_dk2_cont.job`.
+
+---
+
 ## ARQUIVOS .mdp
 
 ### ions.mdp
