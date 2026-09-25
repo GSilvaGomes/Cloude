@@ -392,6 +392,9 @@ NT=${SLURM_CPUS_PER_TASK:-16}
 grep -q "\[ Protein_LMC \]" index.ndx || { echo "ERRO: grupo Protein_LMC não existe no index.ndx (refazer Etapa 9)"; exit 1; }
 for f in ../nvt.mdp ../npt.mdp ../md.mdp; do
   grep -Eq "^tc[-_]grps.*Protein_LMC" $f || { echo "ERRO: tc-grps em $f não usa Protein_LMC"; exit 1; }
+  if grep -Eq "^comm[-_]grps" $f && ! grep -Eq "^comm[-_]grps.*(System|Protein_LMC)" $f; then
+    echo "ERRO: comm-grps em $f não inclui o ligante (usar comm-grps = System)"; exit 1
+  fi
 done
 
 echo "Início: $(date)"
@@ -552,7 +555,29 @@ d) Submeter de novo: `sbatch md_dk2.job`.
 
 > O ligante é acoplado junto com a proteína porque, sozinho (poucos átomos), a temperatura dele ficaria instável.
 
-### 5. Arquivos `#nome.1#` na pasta
+### 5. Warning no `grompp` do NVT: 116 átomos fora dos grupos de remoção do centro de massa
+
+```
+WARNING 1 [file ../nvt.mdp]:
+  116 atoms are not part of any center of mass motion removal group.
+...
+Fatal error:
+Too many warnings (1).
+```
+
+**Causa:** mesmo problema do item 4, mas na linha `comm-grps` (remoção do movimento do centro de massa): ela lista grupos sem o ligante (ex.: `Protein Water_and_ions`).
+
+**Solução:** usar um único grupo para o sistema todo (o que o próprio GROMACS recomenda). **Não** usar `-maxwarn`.
+
+```bash
+grep -n "comm[-_]grps" ../nvt.mdp ../npt.mdp ../md.mdp
+sed -i 's/^comm[-_]grps.*/comm-grps               = System/' ../nvt.mdp ../npt.mdp ../md.mdp
+grep -n "comm[-_]grps" ../nvt.mdp ../npt.mdp ../md.mdp
+```
+
+> A NOTE 2 (remoção do centro de massa com restrição de posição) é normal no NVT/NPT e pode ser ignorada — é só nota, não conta como warning. As mensagens `Ignoring obsolete mdp entry 'title'` / `'ns_type'` também são inofensivas.
+
+### 6. Arquivos `#nome.1#` na pasta
 
 São backups que o GROMACS cria quando um arquivo é sobrescrito (ex.: ao submeter o job de novo). Podem ser apagados:
 
