@@ -401,22 +401,22 @@ echo "Início: $(date)"
 
 # ---------- Minimização ----------
 gmx grompp -f ../minim.mdp -c 4-solv_ions.gro -p topol.top -n index.ndx -o 5-minim.tpr -po 5-minim-out.mdp
-gmx mdrun -deffnm 5-minim -ntmpi 1 -ntomp $NT > 5-minim_run.log 2>&1
+gmx mdrun -v -deffnm 5-minim -ntmpi 1 -ntomp $NT > 5-minim_run.log 2>&1
 echo "Minimização OK: $(date)"
 
 # ---------- Equilíbrio NVT ----------
 gmx grompp -f ../nvt.mdp -c 5-minim.gro -r 5-minim.gro -p topol.top -n index.ndx -o 6-nvt.tpr -po 6-nvt-out.mdp
-gmx mdrun -deffnm 6-nvt -ntmpi 1 -ntomp $NT > 6-nvt_run.log 2>&1
+gmx mdrun -v -deffnm 6-nvt -ntmpi 1 -ntomp $NT > 6-nvt_run.log 2>&1
 echo "NVT OK: $(date)"
 
 # ---------- Equilíbrio NPT ----------
 gmx grompp -f ../npt.mdp -c 6-nvt.gro -r 6-nvt.gro -t 6-nvt.cpt -p topol.top -n index.ndx -o 7-npt.tpr -po 7-npt-out.mdp
-gmx mdrun -deffnm 7-npt -ntmpi 1 -ntomp $NT > 7-npt_run.log 2>&1
+gmx mdrun -v -deffnm 7-npt -ntmpi 1 -ntomp $NT > 7-npt_run.log 2>&1
 echo "NPT OK: $(date)"
 
 # ---------- Produção ----------
 gmx grompp -f ../md.mdp -c 7-npt.gro -t 7-npt.cpt -p topol.top -n index.ndx -o 8-md.tpr -po 8-md-out.mdp
-gmx mdrun -deffnm 8-md -ntmpi 1 -ntomp $NT > 8-md_run.log 2>&1
+gmx mdrun -v -deffnm 8-md -ntmpi 1 -ntomp $NT > 8-md_run.log 2>&1
 echo "Produção OK: $(date)"
 ```
 
@@ -424,7 +424,7 @@ Salvar e sair: `Ctrl + O`, `Enter`, `Ctrl + X`.
 
 > - `--mem`: o tutorial do Vital recomenda bastante memória (512G), mas o GROMACS usa pouca; 64G é mais que suficiente e o job tende a entrar na fila mais rápido.
 > - `--time` e `--cpus-per-task`: ajustar conforme os limites do Vital. O tempo precisa cobrir os 100 ns (ver quantos ns/dia aparecem no final do `7-npt.log` para estimar).
-> - O `-v` foi retirado do `mdrun` porque, no job, ele só enche o `.err`. O progresso fica nos arquivos `.log` de cada etapa.
+> - O `-v` no `mdrun` escreve a contagem de passos e a **previsão de término** no `_run.log` de cada etapa (ver 15.4).
 
 **15.3 — Submeter o job:**
 
@@ -441,6 +441,15 @@ squeue -u $USER          # ST: R = rodando | CD = terminou | F = falhou
 cat md_dk2.out           # mostra quais etapas já terminaram (Minimização OK, NVT OK...)
 cat md_dk2.err           # erros, se algo falhar
 tail -f 8-md.log         # progresso da produção em tempo real (Ctrl + C sai)
+```
+
+Ver a contagem e a previsão de término da etapa que está rodando:
+
+```bash
+for f in 5-minim 6-nvt 7-npt 8-md; do [ -f ${f}_run.log ] && echo "$f: $(tr '\r' '\n' < ${f}_run.log | grep -E 'will finish|Step=|^step' | tail -1)"; done
+```
+
+Aparece algo como `8-md: step 2500000, will finish Sat Sep 27 14:32:10 2026`.
 scancel <número_do_job>  # cancelar o job, se precisar
 ```
 
@@ -448,7 +457,7 @@ scancel <número_do_job>  # cancelar o job, se precisar
 
 ```bash
 cd $SLURM_SUBMIT_DIR
-gmx mdrun -deffnm 8-md -cpi 8-md.cpt -ntmpi 1 -ntomp $SLURM_CPUS_PER_TASK >> 8-md_run.log 2>&1
+gmx mdrun -v -deffnm 8-md -cpi 8-md.cpt -ntmpi 1 -ntomp $SLURM_CPUS_PER_TASK >> 8-md_run.log 2>&1
 ```
 
 E submeter com `sbatch md_dk2_cont.job`.
