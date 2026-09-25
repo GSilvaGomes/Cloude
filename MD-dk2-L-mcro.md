@@ -577,7 +577,40 @@ grep -n "comm[-_]grps" ../nvt.mdp ../npt.mdp ../md.mdp
 
 > A NOTE 2 (remoção do centro de massa com restrição de posição) é normal no NVT/NPT e pode ser ignorada — é só nota, não conta como warning. As mensagens `Ignoring obsolete mdp entry 'title'` / `'ns_type'` também são inofensivas.
 
-### 6. Arquivos `#nome.1#` na pasta
+### 6. Warning no `grompp` do NPT: barostato Berendsen
+
+```
+WARNING 1 [file ../npt.mdp]:
+  The Berendsen barostat does not generate any strictly correct ensemble,
+  ...we would recommend the C-rescale barostat...
+Fatal error:
+Too many warnings (1).
+```
+
+**Causa:** o `npt.mdp` usa `pcoupl = Berendsen`. No GROMACS 2022 isso gera warning e o `grompp` para.
+
+**Solução:** trocar para `C-rescale` (disponível desde o GROMACS 2021). **Não** usar `-maxwarn`.
+
+```bash
+grep -n "pcoupl\|tau_p\|tau-p" ../npt.mdp ../md.mdp
+sed -i 's/^\(pcoupl[ \t]*=[ \t]*\)[Bb]erendsen/\1C-rescale/' ../npt.mdp ../md.mdp
+grep -n "pcoupl" ../npt.mdp ../md.mdp      # deve mostrar C-rescale
+```
+
+**Retomar do NPT sem refazer minimização e NVT** (se o NVT já terminou — `md_dk2.out` mostra "NVT OK" e existem `6-nvt.gro` e `6-nvt.cpt`):
+
+```bash
+cp md_dk2.job md_dk2_npt.job
+nano md_dk2_npt.job
+```
+
+No `md_dk2_npt.job`: trocar `md_dk2` por `md_dk2_npt` nas linhas `--job-name`, `--output` e `--error`, e **apagar** os blocos "Minimização" e "Equilíbrio NVT" (deixar só NPT e Produção). Depois:
+
+```bash
+sbatch md_dk2_npt.job
+```
+
+### 7. Arquivos `#nome.1#` na pasta
 
 São backups que o GROMACS cria quando um arquivo é sobrescrito (ex.: ao submeter o job de novo). Podem ser apagados:
 
