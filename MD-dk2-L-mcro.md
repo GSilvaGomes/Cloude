@@ -387,6 +387,13 @@ cd $SLURM_SUBMIT_DIR
 
 NT=${SLURM_CPUS_PER_TASK:-16}
 
+# ---------- Verificações antes de começar ----------
+# O ligante (116 átomos) precisa estar no grupo de temperatura junto com a proteína
+grep -q "\[ Protein_LMC \]" index.ndx || { echo "ERRO: grupo Protein_LMC não existe no index.ndx (refazer Etapa 9)"; exit 1; }
+for f in ../nvt.mdp ../npt.mdp ../md.mdp; do
+  grep -Eq "^tc[-_]grps.*Protein_LMC" $f || { echo "ERRO: tc-grps em $f não usa Protein_LMC"; exit 1; }
+done
+
 echo "Início: $(date)"
 
 # ---------- Minimização ----------
@@ -457,6 +464,101 @@ nohup ./md_dk2.sh > md_dk2.out 2> md_dk2.err &
 - Trocar `NT=${SLURM_CPUS_PER_TASK:-16}` pelo número de núcleos do computador (ver com `nproc`), e `cd $SLURM_SUBMIT_DIR` por `cd "$(dirname "$0")"`.
 - Se no seu computador o executável for `gmx` (e não `gmx_mpi`), trocar em todo o script: `sed -i 's/gmx_mpi/gmx/g' md_dk2.sh`.
 - O `nohup ... &` deixa rodando mesmo se fechar o terminal. Acompanhar com `tail -f 8-md.log`; ver se ainda está rodando com `ps aux | grep mdrun`; parar com `kill <PID>`.
+
+---
+
+## PROBLEMAS ENCONTRADOS E SOLUÇÕES
+
+### 1. Job falhou (`F`, `NonZeroExitCode`) em poucos segundos
+
+Ver onde parou (na pasta do sistema):
+
+```bash
+cat md_dk2.out              # até qual etapa chegou
+tail -40 md_dk2.err         # erros do grompp / command not found
+tail -40 5-minim_run.log    # erros do mdrun (trocar pelo log da etapa que falhou)
+```
+
+### 2. `gmx` ou `gmx_mpi`?
+
+No Vital o executável é **`gmx`** (`/usr/local/src/gromacs/gromacs/bin/gmx`, versão 2022). Usar `gmx` em todo o script:
+
+```bash
+sed -i 's/gmx_mpi/gmx/g' md_dk2.job
+```
+
+### 3. Erro no `mdrun`: GPU e `-ntomp` sem `-ntmpi`
+
+```
+Fatal error:
+When using GPUs, setting the number of OpenMP threads without specifying the
+number of ranks can lead to conflicting demands. Please specify the number of
+thread-MPI ranks as well (option -ntmpi).
+```
+
+**Causa:** o nó do Vital tem GPU; com `-ntomp` o GROMACS exige também `-ntmpi`.
+
+**Solução:** acrescentar `-ntmpi 1` em todos os `mdrun` (1 processo usando a GPU + as threads de CPU):
+
+```bash
+sed -i 's/ -ntomp / -ntmpi 1 -ntomp /' md_dk2.job
+grep -n "mdrun" md_dk2.job
+```
+
+> `-ntmpi` só funciona com `gmx` (não com `gmx_mpi`).
+
+### 4. Erro no `grompp` do NVT: 116 átomos fora dos grupos de temperatura
+
+```
+Fatal error:
+116 atoms are not part of any of the T-Coupling groups
+```
+
+**Causa:** os 116 átomos são o ligante (LMC). O `tc-grps` dos `.mdp` não incluía o ligante (ex.: `Protein Water_and_ions`).
+
+**Solução:**
+
+a) Conferir os grupos usados e os que existem:
+
+```bash
+grep -n "tc-grps\|tc_grps" ../nvt.mdp ../npt.mdp ../md.mdp
+grep "\[" index.ndx
+```
+
+b) Se `[ Protein_LMC ]` não existir no `index.ndx`, criar:
+
+```bash
+gmx make_ndx -f 4-solv_ions.gro -o index.ndx
+> 1 | 13        # 13 = número do grupo LMC na lista
+> q
+```
+
+c) Corrigir o `tc-grps` nos três `.mdp` (nvt, npt e md):
+
+```bash
+sed -i 's/^tc[-_]grps.*/tc-grps                 = Protein_LMC Water_and_ions/' ../nvt.mdp ../npt.mdp ../md.mdp
+grep -n "tc-grps\|tau_t\|ref_t" ../nvt.mdp ../npt.mdp ../md.mdp
+```
+
+`tau_t` e `ref_t` precisam ter **2 valores** cada (um para cada grupo):
+
+```
+tc-grps   = Protein_LMC  Water_and_ions
+tau_t     = 0.1          0.1
+ref_t     = 300          300
+```
+
+d) Submeter de novo: `sbatch md_dk2.job`.
+
+> O ligante é acoplado junto com a proteína porque, sozinho (poucos átomos), a temperatura dele ficaria instável.
+
+### 5. Arquivos `#nome.1#` na pasta
+
+São backups que o GROMACS cria quando um arquivo é sobrescrito (ex.: ao submeter o job de novo). Podem ser apagados:
+
+```bash
+rm \#*
+```
 
 ---
 
