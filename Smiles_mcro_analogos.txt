@@ -1,0 +1,64 @@
+# Smiles_mcro_analogos
+#
+# Hexapeptideos macrociclizados N-terminal (pGlu) com C-terminal amidado.
+#
+# Esqueleto comum (posicoes 1, 2 e 6 fixas):
+#   pos 1 = Z  pGlu (acido piroglutamico, lactama de 5 membros)  -> C1CC(=O)N[C@@H]1C(=O)
+#   pos 2 = F  Phe                                               -> [C@@H](CC2=CC=CC=C2)
+#   pos 3 = S ou P   Ser / Pro          <- variavel
+#   pos 4 = P ou L   Pro / Leu          <- variavel
+#   pos 5 = E ou K   Glu / Lys          <- variavel
+#   pos 6 = N  Asn + amida C-terminal (*)                        -> [C@@H](CC(N)=O)C(N)=O
+#
+# Os 8 registros abaixo cobrem as 2 x 2 x 2 combinacoes das posicoes 3/4/5.
+# Todos os centros sao L (S, exceto Cys) conforme [C@@H] / [C@H] nas prolinas.
+#
+# Formato de cada registro:
+#   >nome
+#   codigo linear (E = pGlu na notacao de entrada)
+#   codigo com Z = pGlu e * = amida C-terminal
+#   SMILES
+#
+# NOTA: no material de origem o mcr7 estava rotulado "EFSLKN" (duplicando o
+# mcr6); pelo SMILES a posicao 3 e Pro, portanto o codigo correto e EFPLKN,
+# de acordo com a propria linha ZFPLKN*. Corrigido aqui.
+
+>mcro
+EFSPEN
+ZFSPEN*
+C1CC(=O)N[C@@H]1C(=O)N[C@@H](CC2=CC=CC=C2)C(=O)N[C@@H](CO)C(=O)N3CCC[C@H]3C(=O)N[C@@H](CCC(=O)O)C(=O)N[C@@H](CC(N)=O)C(N)=O
+
+>mcr1
+EFPPEN
+ZFPPEN*
+C1CC(=O)N[C@@H]1C(=O)N[C@@H](CC2=CC=CC=C2)C(=O)N1CCC[C@H]1C(=O)N3CCC[C@H]3C(=O)N[C@@H](CCC(=O)O)C(=O)N[C@@H](CC(N)=O)C(N)=O
+
+>mcr2
+EFSPKN
+ZFSPKN*
+C1CC(=O)N[C@@H]1C(=O)N[C@@H](CC2=CC=CC=C2)C(=O)N[C@@H](CO)C(=O)N3CCC[C@H]3C(=O)N[C@@H](CCCCN)C(=O)N[C@@H](CC(N)=O)C(N)=O
+
+>mcr3
+EFSLEN
+ZFSLEN*
+C1CC(=O)N[C@@H]1C(=O)N[C@@H](CC2=CC=CC=C2)C(=O)N[C@@H](CO)C(=O)N[C@@H](CC(C)C)C(=O)N[C@@H](CCC(=O)O)C(=O)N[C@@H](CC(N)=O)C(N)=O
+
+>mcr4
+EFPPKN
+ZFPPKN*
+C1CC(=O)N[C@@H]1C(=O)N[C@@H](CC2=CC=CC=C2)C(=O)N1CCC[C@H]1C(=O)N3CCC[C@H]3C(=O)N[C@@H](CCCCN)C(=O)N[C@@H](CC(N)=O)C(N)=O
+
+>mcr5
+EFPLEN
+ZFPLEN*
+C1CC(=O)N[C@@H]1C(=O)N[C@@H](CC2=CC=CC=C2)C(=O)N1CCC[C@H]1C(=O)N[C@@H](CC(C)C)C(=O)N[C@@H](CCC(=O)O)C(=O)N[C@@H](CC(N)=O)C(N)=O
+
+>mcr6
+EFSLKN
+ZFSLKN*
+C1CC(=O)N[C@@H]1C(=O)N[C@@H](CC2=CC=CC=C2)C(=O)N[C@@H](CO)C(=O)N[C@@H](CC(C)C)C(=O)N[C@@H](CCCCN)C(=O)N[C@@H](CC(N)=O)C(N)=O
+
+>mcr7
+EFPLKN
+ZFPLKN*
+C1CC(=O)N[C@@H]1C(=O)N[C@@H](CC2=CC=CC=C2)C(=O)N1CCC[C@H]1C(=O)N[C@@H](CC(C)C)C(=O)N[C@@H](CCCCN)C(=O)N[C@@H](CC(N)=O)C(N)=O
