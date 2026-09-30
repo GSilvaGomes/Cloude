@@ -1,0 +1,8 @@
+# Pacotes gerados para download. As imagens ficam versionadas uma a uma em
+# imagens_2D/, entao o zip e so uma copia derivada -- regere com:
+#   zip -r imagens_2D_mcro_analogos.zip imagens_2D
+*.zip
+
+# Python
+__pycache__/
+*.pyc
