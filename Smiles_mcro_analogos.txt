@@ -62,3 +62,129 @@ C1CC(=O)N[C@@H]1C(=O)N[C@@H](CC2=CC=CC=C2)C(=O)N[C@@H](CO)C(=O)N[C@@H](CC(C)C)C(
 EFPLKN
 ZFPLKN*
 C1CC(=O)N[C@@H]1C(=O)N[C@@H](CC2=CC=CC=C2)C(=O)N1CCC[C@H]1C(=O)N[C@@H](CC(C)C)C(=O)N[C@@H](CCCCN)C(=O)N[C@@H](CC(N)=O)C(N)=O
+
+# ---------------------------------------------------------------------------
+# MUTANTES DA POSICAO 2 (Phe -> Val / Leu)
+#
+# Motivacao: interacoes de L-mcro com TRPA1; troca do anel aromatico da Phe
+# por cadeias alifaticas ramificadas de volume decrescente (Leu ~ Val < Phe).
+#
+#   pos 2 = V  Val  -> N[C@@H](C(C)C)C(=O)
+#   pos 2 = L  Leu  -> N[C@@H](CC(C)C)C(=O)
+#
+# As posicoes 3/4/5 repetem as mesmas 8 combinacoes dos mcro/mcr1-mcr7,
+# agora sobre cada uma das duas cabecas -> 16 analogos (mcr8-mcr23).
+# O codigo alternativo da planilha (MCR8, MCR82, ...) vem depois do "|".
+# ---------------------------------------------------------------------------
+
+>mcr8 | MCR8
+EVSPEN
+ZVSPEN*
+C1CC(=O)N[C@@H]1C(=O)N[C@@H](C(C)C)C(=O)N[C@@H](CO)C(=O)N3CCC[C@H]3C(=O)N[C@@H](CCC(=O)O)C(=O)N[C@@H](CC(N)=O)C(N)=O
+
+>mcr9 | MCR9
+ELSPEN
+ZLSPEN*
+C1CC(=O)N[C@@H]1C(=O)N[C@@H](CC(C)C)C(=O)N[C@@H](CO)C(=O)N3CCC[C@H]3C(=O)N[C@@H](CCC(=O)O)C(=O)N[C@@H](CC(N)=O)C(N)=O
+
+>mcr10 | MCR82
+EVPPEN
+ZVPPEN*
+C1CC(=O)N[C@@H]1C(=O)N[C@@H](C(C)C)C(=O)N1CCC[C@H]1C(=O)N3CCC[C@H]3C(=O)N[C@@H](CCC(=O)O)C(=O)N[C@@H](CC(N)=O)C(N)=O
+
+>mcr11 | MCR92
+ELPPEN
+ZLPPEN*
+C1CC(=O)N[C@@H]1C(=O)N[C@@H](CC(C)C)C(=O)N1CCC[C@H]1C(=O)N3CCC[C@H]3C(=O)N[C@@H](CCC(=O)O)C(=O)N[C@@H](CC(N)=O)C(N)=O
+
+>mcr12 | MCR84
+EVSPKN
+ZVSPKN*
+C1CC(=O)N[C@@H]1C(=O)N[C@@H](C(C)C)C(=O)N[C@@H](CO)C(=O)N3CCC[C@H]3C(=O)N[C@@H](CCCCN)C(=O)N[C@@H](CC(N)=O)C(N)=O
+
+>mcr13 | MCR94
+ELSPKN
+ZLSPKN*
+C1CC(=O)N[C@@H]1C(=O)N[C@@H](CC(C)C)C(=O)N[C@@H](CO)C(=O)N3CCC[C@H]3C(=O)N[C@@H](CCCCN)C(=O)N[C@@H](CC(N)=O)C(N)=O
+
+>mcr14 | MCR810
+EVSLEN
+ZVSLEN*
+C1CC(=O)N[C@@H]1C(=O)N[C@@H](C(C)C)C(=O)N[C@@H](CO)C(=O)N[C@@H](CC(C)C)C(=O)N[C@@H](CCC(=O)O)C(=O)N[C@@H](CC(N)=O)C(N)=O
+
+>mcr15 | MCR910
+ELSLEN
+ZLSLEN*
+C1CC(=O)N[C@@H]1C(=O)N[C@@H](CC(C)C)C(=O)N[C@@H](CO)C(=O)N[C@@H](CC(C)C)C(=O)N[C@@H](CCC(=O)O)C(=O)N[C@@H](CC(N)=O)C(N)=O
+
+>mcr16 | MCR824
+EVPPKN
+ZVPPKN*
+C1CC(=O)N[C@@H]1C(=O)N[C@@H](C(C)C)C(=O)N1CCC[C@H]1C(=O)N3CCC[C@H]3C(=O)N[C@@H](CCCCN)C(=O)N[C@@H](CC(N)=O)C(N)=O
+
+>mcr17 | MCR924
+ELPPKN
+ZLPPKN*
+C1CC(=O)N[C@@H]1C(=O)N[C@@H](CC(C)C)C(=O)N1CCC[C@H]1C(=O)N3CCC[C@H]3C(=O)N[C@@H](CCCCN)C(=O)N[C@@H](CC(N)=O)C(N)=O
+
+>mcr18 | MCR8210
+EVPLEN
+ZVPLEN*
+C1CC(=O)N[C@@H]1C(=O)N[C@@H](C(C)C)C(=O)N1CCC[C@H]1C(=O)N[C@@H](CC(C)C)C(=O)N[C@@H](CCC(=O)O)C(=O)N[C@@H](CC(N)=O)C(N)=O
+
+>mcr19 | MCR9210
+ELPLEN
+ZLPLEN*
+C1CC(=O)N[C@@H]1C(=O)N[C@@H](CC(C)C)C(=O)N1CCC[C@H]1C(=O)N[C@@H](CC(C)C)C(=O)N[C@@H](CCC(=O)O)C(=O)N[C@@H](CC(N)=O)C(N)=O
+
+>mcr20 | MCR8410
+EVSLKN
+ZVSLKN*
+C1CC(=O)N[C@@H]1C(=O)N[C@@H](C(C)C)C(=O)N[C@@H](CO)C(=O)N[C@@H](CC(C)C)C(=O)N[C@@H](CCCCN)C(=O)N[C@@H](CC(N)=O)C(N)=O
+
+>mcr21 | MCR9410
+ELSLKN
+ZLSLKN*
+C1CC(=O)N[C@@H]1C(=O)N[C@@H](CC(C)C)C(=O)N[C@@H](CO)C(=O)N[C@@H](CC(C)C)C(=O)N[C@@H](CCCCN)C(=O)N[C@@H](CC(N)=O)C(N)=O
+
+>mcr22 | MCR82410
+EVPLKN
+ZVPLKN*
+C1CC(=O)N[C@@H]1C(=O)N[C@@H](C(C)C)C(=O)N1CCC[C@H]1C(=O)N[C@@H](CC(C)C)C(=O)N[C@@H](CCCCN)C(=O)N[C@@H](CC(N)=O)C(N)=O
+
+>mcr23 | MCR92410
+ELPLKN
+ZLPLKN*
+C1CC(=O)N[C@@H]1C(=O)N[C@@H](CC(C)C)C(=O)N1CCC[C@H]1C(=O)N[C@@H](CC(C)C)C(=O)N[C@@H](CCCCN)C(=O)N[C@@H](CC(N)=O)C(N)=O
+
+# ---------------------------------------------------------------------------
+# RESUMO (gerado com RDKit; todos os 24 SMILES parseiam, 6 centros quirais
+# definidos em cada um, todos S = all-L, nenhum codigo ou SMILES duplicado)
+#
+#   nome                 codigo     formula          MW
+# ---------------------------------------------------------------------------
+#   mcro                 EFSPEN     C31H42N8O11       702.72
+#   mcr1                 EFPPEN     C33H44N8O10       712.76
+#   mcr2                 EFSPKN     C32H47N9O9        701.78
+#   mcr3                 EFSLEN     C32H46N8O11       718.76
+#   mcr4                 EFPPKN     C34H49N9O8        711.82
+#   mcr5                 EFPLEN     C34H48N8O10       728.80
+#   mcr6                 EFSLKN     C33H51N9O9        717.82
+#   mcr7                 EFPLKN     C35H53N9O8        727.86
+#   mcr8 | MCR8          EVSPEN     C27H42N8O11       654.68
+#   mcr9 | MCR9          ELSPEN     C28H44N8O11       668.71
+#   mcr10 | MCR82        EVPPEN     C29H44N8O10       664.72
+#   mcr11 | MCR92        ELPPEN     C30H46N8O10       678.74
+#   mcr12 | MCR84        EVSPKN     C28H47N9O9        653.74
+#   mcr13 | MCR94        ELSPKN     C29H49N9O9        667.77
+#   mcr14 | MCR810       EVSLEN     C28H46N8O11       670.72
+#   mcr15 | MCR910       ELSLEN     C29H48N8O11       684.75
+#   mcr16 | MCR824       EVPPKN     C30H49N9O8        663.78
+#   mcr17 | MCR924       ELPPKN     C31H51N9O8        677.80
+#   mcr18 | MCR8210      EVPLEN     C30H48N8O10       680.76
+#   mcr19 | MCR9210      ELPLEN     C31H50N8O10       694.79
+#   mcr20 | MCR8410      EVSLKN     C29H51N9O9        669.78
+#   mcr21 | MCR9410      ELSLKN     C30H53N9O9        683.81
+#   mcr22 | MCR82410     EVPLKN     C31H53N9O8        679.82
+#   mcr23 | MCR92410     ELPLKN     C32H55N9O8        693.85
+# ---------------------------------------------------------------------------
