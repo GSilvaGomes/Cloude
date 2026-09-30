@@ -1,6 +1,11 @@
 # Smiles_mcro_analogos
 #
-# Hexapeptideos macrociclizados N-terminal (pGlu) com C-terminal amidado.
+# Hexapeptideos LINEARES, com pGlu na ponta N e amida na ponta C.
+#
+# Nao ha macrociclo: os unicos aneis sao a lactama de 5 membros do pGlu, o
+# anel das prolinas e o benzeno da Phe (maior anel = 6 atomos). O backbone
+# nao e fechado por nenhuma ligacao cabeca-cauda, cadeia lateral-cauda,
+# lactama ou dissulfeto. O prefixo "mcr" nos nomes e apenas rotulo da serie.
 #
 # Esqueleto comum (posicoes 1, 2 e 6 fixas):
 #   pos 1 = Z  pGlu (acido piroglutamico, lactama de 5 membros)  -> C1CC(=O)N[C@@H]1C(=O)
