@@ -79,9 +79,28 @@ def run(coordgen, constrained):
     return out
 
 
+def run_mcs(coordgen):
+    """Alinhamento por MCS -- o layout usado em gera_imagens_2D.py."""
+    from rdkit.Chem import rdFMCS
+    rdDepictor.SetPreferCoordGen(coordgen)
+    ms = [build(*r) for r in rows]
+    mcs = rdFMCS.FindMCS(ms, ringMatchesRingOnly=True, timeout=120)
+    patt = Chem.MolFromSmarts(mcs.smartsString)
+    ref = Chem.Mol(ms[0])
+    rdDepictor.Compute2DCoords(ref)
+    for m in ms:
+        try:
+            rdDepictor.GenerateDepictionMatching2DStructure(m, ref, refPatt=patt)
+        except Exception:
+            rdDepictor.Compute2DCoords(m)
+    return {r[0]: collisions(m) for r, m in zip(rows, ms)}
+
+
 variants = {
-    "atual  (template, sem coordgen)": run(False, True),
-    "coordgen + template            ": run(True, True),
+    "MCS, sem coordgen  (EM USO)    ": run_mcs(False),
+    "MCS + coordgen                 ": run_mcs(True),
+    "template backbone, sem coordgen": run(False, True),
+    "template backbone + coordgen   ": run(True, True),
     "coordgen livre (sem template)  ": run(True, False),
 }
 
@@ -93,10 +112,10 @@ for k, v in variants.items():
     print(f"{k} {tot:6} {piores}")
 
 print("\ndetalhe por composto (colisoes):")
-print(f"{'composto':10} {'atual':>6} {'cg+tpl':>7} {'cg livre':>9}")
+print(f"{'composto':10} {'MCS':>6} {'tpl':>7} {'cg livre':>9}")
 for name, *_ in rows:
-    a = variants["atual  (template, sem coordgen)"][name]
-    b = variants["coordgen + template            "][name]
+    a = variants["MCS, sem coordgen  (EM USO)    "][name]
+    b = variants["template backbone, sem coordgen"][name]
     c = variants["coordgen livre (sem template)  "][name]
     flag = "  <--" if a > 0 and b == 0 else ""
     print(f"{name:10} {a:6} {b:7} {c:9}{flag}")

@@ -1,6 +1,21 @@
+"""Gera as imagens 2D dos 24 analogos, em blocos de 6 e individuais.
+
+Layout: alinhamento por MCS, com o algoritmo de depicao padrao do RDKit.
+Medindo pares de atomos nao-ligados mais proximos que 0.70 x o comprimento
+medio de ligacao, essa combinacao da 0 colisoes nos 24 compostos. As
+alternativas testadas sao piores: CoordGen livre da 8, template do backbone
+com CoordGen da 4, e template do backbone sem CoordGen da 60 -- prender o
+backbone tira o espaco de que as cadeias laterais precisam.
+
+O custo do MCS e que as moleculas nao ficam todas na mesma orientacao entre
+os paineis, ao contrario do que o template do backbone garantia.
+
+Use scripts/mede_colisoes_2D.py para reavaliar se mudar o layout.
+"""
 from rdkit import Chem, RDLogger
 from rdkit.Chem import rdFMCS, rdDepictor
 from rdkit.Chem.Draw import rdMolDraw2D
+
 RDLogger.DisableLog('rdApp.*')
 
 OUT = "/home/user/Cloude/imagens_2D"
@@ -24,27 +39,31 @@ rows = [("mcro","F","S","P","E"),("mcr1","F","P","P","E"),("mcr2","F","S","P","K
         ("mcr20","V","S","L","K"),("mcr21","L","S","L","K"),("mcr22","V","P","L","K"),
         ("mcr23","L","P","L","K")]
 
-def nat(s):
-    return Chem.MolFromSmiles(s, sanitize=False).GetNumAtoms()
+# tons pastel: realce legivel sem competir com os rotulos dos atomos
+COL = {2: (0.98, 0.78, 0.55),   # pos 2  Phe / Val / Leu
+       3: (0.66, 0.82, 0.95),   # pos 3  Ser / Pro
+       4: (0.72, 0.89, 0.72),   # pos 4  Pro / Leu
+       5: (0.87, 0.77, 0.95)}   # pos 5  Glu / Lys
 
-# tons pastel: realce legivel sem competir com os atomos
-COL = {2: (0.98, 0.78, 0.55),   # pos 2  F / V / L
-       3: (0.66, 0.82, 0.95),   # pos 3  S / P
-       4: (0.72, 0.89, 0.72),   # pos 4  P / L
-       5: (0.87, 0.77, 0.95)}   # pos 5  E / K
+
+def nat(smi):
+    return Chem.MolFromSmiles(smi, sanitize=False).GetNumAtoms()
+
 
 mols, hA, hB, legends = [], [], [], []
 for name, a, b, c, d in rows:
     blocks = [HEAD, B2[a], B3[b], B4[c], B5[d], TAIL]
     m = Chem.MolFromSmiles("".join(blocks))
-    off, acol, res = 0, {}, {}
+    # os indices seguem a ordem do SMILES, entao as faixas por residuo saem
+    # do numero de atomos de cada bloco
+    off, res = 0, {}
     for i, blk in enumerate(blocks, 1):
         n = nat(blk)
         if i in COL:
             for idx in range(off, off + n):
-                acol[idx] = COL[i]
                 res[idx] = i
         off += n
+    acol = {i: COL[r] for i, r in res.items()}
     bcol = {}
     for bd in m.GetBonds():
         i, j = bd.GetBeginAtomIdx(), bd.GetEndAtomIdx()
@@ -53,56 +72,22 @@ for name, a, b, c, d in rows:
     mols.append(m); hA.append(acol); hB.append(bcol)
     legends.append(f"{name}    Z-{a}-{b}-{c}-{d}-N*")
 
-# Template = backbone completo (pGlu -> 5 residuos -> amida C-terminal), com as
-# cadeias laterais reduzidas a Gly. Ancorar nele, e nao no MCS, evita que as
-# moleculas saiam giradas/espelhadas umas em relacao as outras: o MCS de 18
-# atomos e curto e casa em regioes diferentes de cada molecula.
-TEMPLATE = "O=C1CCC(N1)C(=O)NCC(=O)NCC(=O)NCC(=O)NCC(=O)NCC(N)=O"
-
-# CoordGen no lugar do algoritmo padrao: com o backbone fixo, o layout padrao
-# encaixa as cadeias laterais sem espaco e sobrepoe atomos no plano. Medindo
-# pares nao-ligados mais proximos que 0.70 x o comprimento medio de ligacao,
-# o padrao da 60 colisoes nos 24 compostos e o CoordGen da 4.
-rdDepictor.SetPreferCoordGen(True)
-
-tpl = Chem.MolFromSmiles(TEMPLATE)
-rdDepictor.Compute2DCoords(tpl)
-
-
-def orienta_n_para_esquerda(m, match):
-    """Poe o N-terminal (pGlu) a esquerda, convencao para peptideos.
-
-    A checagem e feita na molecula ja desenhada, e nao no template: orientar o
-    template nao se propaga de forma confiavel para o resultado final. `match`
-    mapeia os atomos do template, entao match[0] e o O do pGlu e match[-1] e o
-    O da amida C-terminal. Tem de ser rotacao de 180 graus e nao espelhamento,
-    que inverteria a leitura da estereoquimica.
-    """
-    conf = m.GetConformer()
-    if conf.GetAtomPosition(match[0]).x <= conf.GetAtomPosition(match[-1]).x:
-        return False
-    for i in range(m.GetNumAtoms()):
-        p = conf.GetAtomPosition(i)
-        p.x, p.y = -p.x, -p.y
-        conf.SetAtomPosition(i, p)
-    return True
-
-n_ok = n_gir = 0
+mcs = rdFMCS.FindMCS(mols, ringMatchesRingOnly=True, timeout=120)
+patt = Chem.MolFromSmarts(mcs.smartsString)
+ref = Chem.Mol(mols[0])
+rdDepictor.Compute2DCoords(ref)
 for m in mols:
-    match = m.GetSubstructMatch(tpl)
-    if match:
-        rdDepictor.GenerateDepictionMatching2DStructure(m, tpl, acceptFailure=True)
-        n_ok += 1
-        n_gir += orienta_n_para_esquerda(m, match)
-    else:
+    try:
+        rdDepictor.GenerateDepictionMatching2DStructure(m, ref, refPatt=patt)
+    except Exception:
         rdDepictor.Compute2DCoords(m)
-print(f"backbone-template ({tpl.GetNumAtoms()} atomos) casou em {n_ok}/{len(mols)}")
-print(f"girados 180 graus para o N-terminal ficar a esquerda: {n_gir}/{len(mols)}")
+print(f"MCS comum: {mcs.numAtoms} atomos / {mcs.numBonds} ligacoes")
+
 
 def render(sub, path, ncols, w=640, h=520, svg=False):
     ms = [mols[i] for i in sub]
-    A  = [hA[i] for i in sub]
-    B  = [hB[i] for i in sub]
+    A = [hA[i] for i in sub]
+    B = [hB[i] for i in sub]
     lg = [legends[i] for i in sub]
     nrows = -(-len(ms) // ncols)
     drv = rdMolDraw2D.MolDraw2DSVG if svg else rdMolDraw2D.MolDraw2DCairo
@@ -122,15 +107,14 @@ def render(sub, path, ncols, w=640, h=520, svg=False):
     open(path, "w" if svg else "wb").write(t)
     print("  ", path)
 
-# blocos de 6 compostos, grade 3 x 2
+
 CHUNK = 6
 for k in range(0, len(rows), CHUNK):
     sub = list(range(k, min(k + CHUNK, len(rows))))
-    nome = f"bloco{k//CHUNK + 1}_{rows[sub[0]][0]}-{rows[sub[-1]][0]}"
+    nome = f"bloco{k // CHUNK + 1}_{rows[sub[0]][0]}-{rows[sub[-1]][0]}"
     render(sub, f"{OUT}/{nome}.png", 3)
     render(sub, f"{OUT}/{nome}.svg", 3, svg=True)
 
-# um arquivo por composto, com realce contInuo
 for i, (name, *_) in enumerate(rows):
     render([i], f"{OUT}/{name}.png", 1, 960, 760)
     render([i], f"{OUT}/{name}.svg", 1, 960, 760, svg=True)
