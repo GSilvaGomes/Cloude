@@ -533,15 +533,23 @@ Resíduos ~447–1078 (632 C-alpha).
 3. Comparar a pose estável (30–57 ns) com a pose do docking.
 4. Analisar contatos e ligações de hidrogênio ligante–proteína para identificar os resíduos que seguram a nova pose.
 
-### 11.4 — Tabela de valores (a partir de 25 ns)
-
-Valores parciais **estimados visualmente dos gráficos** — substituir pelos números do item 7.7.
+### 11.4 — Tabela de valores (média ± desvio, de 25 ns até ~57 ns)
 
 | Medida | Valor parcial (~57 ns) | Valor final (100 ns) |
 |---|---|---|
-| RMSD proteína | ~11–13 Å (estimado) | |
-| RMSD ligante (ajuste: backbone inteiro) | ~7–8 Å (estimado) | |
-| RMSD ligante (ajuste: bolsão) | ~5,5–6 Å (estimado) | |
-| RMSD bolsão | (gerar 7.4) | |
-| RMSD interno do ligante | (gerar 7.5) | |
-| Distância ligante–bolsão | ~6 Å (estimado) | |
+| RMSD proteína (backbone) | **12,01 ± 1,05 Å** | |
+| RMSD ligante (ajuste: backbone inteiro) | **7,41 ± 0,78 Å** | |
+| RMSD ligante (ajuste: bolsão) | **5,71 ± 0,81 Å** | |
+| RMSD bolsão (backbone) | **1,86 ± 0,43 Å** | |
+| RMSD interno do ligante | **3,07 ± 0,33 Å** | |
+| Distância ligante–bolsão | **6,23 ± 0,57 Å** | |
+
+### 11.5 — Conclusão parcial
+
+1. **O sítio de ligação está estável:** RMSD do bolsão = 1,86 ± 0,43 Å (dentro do esperado para região estável, 1–2 Å), mesmo com a proteína inteira em ~12 Å. O RMSD alto da proteína vem de regiões **longe do sítio** (alças transmembrana e C-terminal, ver RMSF), e não do bolsão.
+2. **O ligante permaneceu no sítio:** distância ligante–bolsão estável em 6,23 ± 0,57 Å (desvio pequeno, sem tendência de aumento depois de ~20 ns).
+3. **O ligante mudou de pose em relação ao docking:** RMSD com ajuste no bolsão = 5,71 ± 0,81 Å. Parte disso é **mudança de conformação** do próprio ligante (RMSD interno = 3,07 ± 0,33 Å, molécula grande e flexível) e parte é **reposicionamento/rotação** dentro do sítio.
+4. **A nova pose é estável:** desvios baixos (0,3–0,8 Å) nas medidas do ligante depois de 25 ns → o ligante encontrou uma pose estável, diferente da do docking.
+5. O RMSD do ligante com ajuste no backbone inteiro (7,41 Å) é maior porque inclui o movimento global da proteína — por isso a medida mais representativa para o ligante é a com ajuste no bolsão.
+
+**Resumo:** complexo **estável no sítio** — bolsão preservado e ligante ligado, porém em **pose rearranjada** em relação ao docking. Confirmar com os dados finais (100 ns) e com análise de contatos/ligações de hidrogênio e de clusters para descrever a nova pose.
