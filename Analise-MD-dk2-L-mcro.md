@@ -218,3 +218,160 @@ Para tirar uma curva, apagar a linha dela no `plot` (e a vírgula `, \` da linha
 
 - Usar a **parte estável (platô)** para médias e análises; os primeiros ns ainda são equilíbrio.
 - Se o ligante der um salto, abrir a trajetória no VMD naquele tempo para ver o que aconteceu.
+
+---
+
+## 6. Números dos grupos no `index.ndx` deste sistema
+
+O nome `LMC` aparece **duas vezes** no `index.ndx` (grupos 13 e 20), então o GROMACS não aceita o nome: usar **números**.
+
+| Grupo | Número |
+|---|---|
+| C-alpha | **3** |
+| Backbone | **4** |
+| LMC (ligante, 116 átomos) | **13** |
+| Protein_LMC | **24** |
+| Bolsão (criado no item 7.2) | **25** (conferir) |
+
+Comandos do item 3.2 com números:
+
+```bash
+echo "4 4"  | gmx rms -s 8-md.tpr -f 9-md_center.xtc -n index.ndx -o 9-rmsd_prot.xvg -tu ns
+echo "4 13" | gmx rms -s 8-md.tpr -f 9-md_center.xtc -n index.ndx -o 9-rmsd_lig.xvg -tu ns
+echo "4 24" | gmx rms -s 8-md.tpr -f 9-md_center.xtc -n index.ndx -o 9-rmsd_complexo.xvg -tu ns
+```
+
+---
+
+## 7. O ligante ficou no sítio? (análises complementares)
+
+O RMSD da proteína deu alto (~11–13 Å) — provavelmente por ser um canal de membrana simulado só em água, isolado do tetrâmero e vindo de modelo AlphaFold. Com a proteína se mexendo tanto, o RMSD do ligante com ajuste no backbone **inteiro** (~7 Å) mistura o movimento da proteína com o do ligante. As análises abaixo separam isso.
+
+### 7.1 — RMSF por resíduo (quais regiões da proteína mais se mexem)
+
+```bash
+echo "3" | gmx rmsf -s 8-md.tpr -f 9-md_center.xtc -n index.ndx -o 9-rmsf.xvg -res
+awk '!/^[#@]/{print $1, $2*10}' 9-rmsf.xvg > 9-rmsf_A.dat
+```
+
+### 7.2 — Criar o grupo do bolsão (backbone dos resíduos a até 5 Å do ligante)
+
+```bash
+gmx select -s 8-md.tpr -n index.ndx -select 'group "Backbone" and same residue as within 0.5 of resname LMC' -on pocket.ndx
+cat index.ndx pocket.ndx > index_pocket.ndx
+grep "\[" index_pocket.ndx | awk '{print NR-1, $2}' | tail -2     # o último é o bolsão (provavelmente 25)
+```
+
+> Se o número do bolsão não for 25, trocar `25` nos comandos abaixo.
+
+### 7.3 — RMSD do ligante com ajuste no bolsão (**o mais importante**)
+
+```bash
+echo "25 13" | gmx rms -s 8-md.tpr -f 9-md_center.xtc -n index_pocket.ndx -o 9-rmsd_lig_pocket.xvg -tu ns
+awk '!/^[#@]/{print $1, $2*10}' 9-rmsd_lig_pocket.xvg > 9-rmsd_lig_pocket_A.dat
+```
+
+### 7.4 — RMSD do bolsão (o sítio se deformou?)
+
+```bash
+echo "25 25" | gmx rms -s 8-md.tpr -f 9-md_center.xtc -n index_pocket.ndx -o 9-rmsd_pocket.xvg -tu ns
+awk '!/^[#@]/{print $1, $2*10}' 9-rmsd_pocket.xvg > 9-rmsd_pocket_A.dat
+```
+
+### 7.5 — RMSD interno do ligante (mudança de conformação do próprio ligante)
+
+```bash
+echo "13 13" | gmx rms -s 8-md.tpr -f 9-md_center.xtc -n index.ndx -o 9-rmsd_lig_interno.xvg -tu ns
+awk '!/^[#@]/{print $1, $2*10}' 9-rmsd_lig_interno.xvg > 9-rmsd_lig_interno_A.dat
+```
+
+### 7.6 — Distância entre o centro do ligante e o centro do bolsão
+
+```bash
+gmx distance -s 8-md.tpr -f 9-md_center.xtc -n index_pocket.ndx -select 'com of group 13 plus com of group 25' -oall 9-dist_lig_pocket.xvg -tu ns
+awk '!/^[#@]/{print $1, $2*10}' 9-dist_lig_pocket.xvg > 9-dist_lig_pocket_A.dat
+```
+
+### 7.7 — Médias ± desvio (a partir de 25 ns)
+
+```bash
+for f in prot lig lig_pocket pocket lig_interno; do awk -v t0=25 -v n=$f '$1>=t0{s+=$2; q+=$2*$2; c++} END{m=s/c; printf "RMSD %-12s = %5.2f ± %4.2f Å\n", n, m, sqrt(q/c-m*m)}' 9-rmsd_${f}_A.dat; done
+awk -v t0=25 '$1>=t0{s+=$2; q+=$2*$2; c++} END{m=s/c; printf "Distância lig-bolsão = %5.2f ± %4.2f Å\n", m, sqrt(q/c-m*m)}' 9-dist_lig_pocket_A.dat
+```
+
+### 7.8 — Copiar para o Ubuntu
+
+No terminal do **Ubuntu**, dentro da pasta onde estão os outros arquivos:
+
+```bash
+scp "geniana_gomes@endereco_do_vital:/storage/zuleika/volume2/project/gisele_picolo/minicro_docking/MD/MD_L_mcro_TRPA1_dk2/9-*_A.dat" .
+```
+
+---
+
+## 8. Gráficos das análises complementares (gnuplot → PDF)
+
+### 8.1 — RMSF por resíduo
+
+`plot_rmsf.gp`:
+
+```gnuplot
+set terminal pdfcairo size 10,5 font "Arial,12" enhanced
+set output "rmsf_dk2.pdf"
+set title "RMSF por resíduo (C-alpha) - TRPA1 + L-mcro (dk2)"
+set xlabel "Resíduo"
+set ylabel "RMSF (Å)"
+set grid
+unset key
+plot "9-rmsf_A.dat" with lines lw 2 lc rgb "red"
+```
+
+### 8.2 — Ligante no sítio (RMSD + distância)
+
+`plot_lig_sitio.gp`:
+
+```gnuplot
+set terminal pdfcairo size 10,8 font "Arial,12" enhanced
+set output "ligante_sitio_dk2.pdf"
+set multiplot layout 2,1 title "L-mcro no sítio da TRPA1 (dk2)"
+
+set xlabel "Tempo (ns)"
+set ylabel "RMSD (Å)"
+set grid
+set key top left
+plot "9-rmsd_lig_A.dat"         with lines lw 1.5 lc rgb "#9ecae1" title "Ligante (ajuste: backbone inteiro)", \
+     "9-rmsd_lig_pocket_A.dat"  with lines lw 2   lc rgb "blue"    title "Ligante (ajuste: bolsão)", \
+     "9-rmsd_pocket_A.dat"      with lines lw 2   lc rgb "red"     title "Bolsão (backbone)", \
+     "9-rmsd_lig_interno_A.dat" with lines lw 2   lc rgb "#2ca02c" title "Ligante (conformação interna)"
+
+set ylabel "Distância (Å)"
+unset key
+plot "9-dist_lig_pocket_A.dat" with lines lw 2 lc rgb "black" title "Centro ligante - centro bolsão"
+
+unset multiplot
+```
+
+### 8.3 — Gerar os gráficos
+
+```bash
+gnuplot plot_rmsd.gp          # RMSD geral (item 4)
+gnuplot plot_rmsf.gp          # → rmsf_dk2.pdf
+gnuplot plot_lig_sitio.gp     # → ligante_sitio_dk2.pdf
+```
+
+Abrir: `xdg-open rmsf_dk2.pdf` (ou `explorer.exe rmsf_dk2.pdf` no WSL, ou dois cliques no gerenciador de arquivos).
+
+---
+
+## 9. Como interpretar as análises complementares
+
+| Análise | Ligante estável no sítio | Alerta |
+|---|---|---|
+| **RMSD ligante (ajuste no bolsão)** | **< 2–3 Å** e sem saltos | > 4–5 Å ou saltos → mudou de pose / saindo do sítio |
+| **RMSD do bolsão** | Baixo (~1–2 Å) → sítio preservado | Alto → o sítio se deformou |
+| **RMSD interno do ligante** | Estável → mesma conformação | Saltos → ligante mudou de conformação (comum em moléculas grandes e flexíveis) |
+| **Distância ligante–bolsão** | Constante (oscila pouco) | Aumenta continuamente → ligante saindo do sítio |
+| **RMSF** | Picos em terminais e alças são normais | Picos nos resíduos do sítio → sítio muito flexível |
+
+- Se o RMSD com ajuste no bolsão for baixo mas o global (~7 Å) for alto → o ligante **ficou no sítio**; o RMSD alto vem do movimento do resto da proteína.
+- Se a RMSF mostrar que os picos estão em terminais/alças longe do sítio, dá para refazer o RMSD da proteína **sem essas regiões** (ou só do domínio onde está o ligante).
