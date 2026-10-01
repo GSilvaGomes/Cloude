@@ -7,6 +7,25 @@ Pasta no Vital: `/storage/zuleika/volume2/project/gisele_picolo/minicro_docking/
 
 Todos os comandos são rodados **dentro da pasta do sistema**. Nenhum deles para a MD — só leem os arquivos.
 
+> **STATUS: análise PARCIAL** — feita com a MD ainda rodando (~57 ns de 100 ns).
+> Quando a produção terminar, **refazer tudo** seguindo o roteiro abaixo com a trajetória completa.
+
+### Roteiro para refazer com a MD final
+
+| Ordem | O que fazer | Onde | Item |
+|---|---|---|---|
+| 1 | Confirmar que a produção terminou (`Produção OK` no `md_dk2.out`) | Vital | 1 |
+| 2 | Centralizar a trajetória completa (`9-md_center.xtc`) | Vital | 3.1 |
+| 3 | RMSD proteína / ligante / complexo (com números de grupo) | Vital | 6 |
+| 4 | Converter para Å | Vital | 3.3 |
+| 5 | RMSF, bolsão, RMSD no bolsão, RMSD interno, distância | Vital | 7.1 – 7.6 |
+| 6 | Médias ± desvio na parte estável (ajustar `t0`) | Vital | 3.4 e 7.7 |
+| 7 | Copiar os `.dat` para o Ubuntu | Ubuntu | 7.8 |
+| 8 | Gerar os gráficos (`plot_rmsd.gp`, `plot_rmsf.gp`, `plot_lig_sitio.gp`) | Ubuntu | 4.2 e 8 |
+| 9 | Interpretar e comparar com os resultados parciais | — | 5, 9 e 11 |
+
+> Ao refazer, os arquivos `9-*` são sobrescritos (o GROMACS guarda backups `#nome.1#`). Para manter os parciais, antes copie: `mkdir parcial_57ns && cp 9-* parcial_57ns/`.
+
 ---
 
 ## 1. Acompanhar a MD enquanto roda
@@ -375,3 +394,109 @@ Abrir: `xdg-open rmsf_dk2.pdf` (ou `explorer.exe rmsf_dk2.pdf` no WSL, ou dois c
 
 - Se o RMSD com ajuste no bolsão for baixo mas o global (~7 Å) for alto → o ligante **ficou no sítio**; o RMSD alto vem do movimento do resto da proteína.
 - Se a RMSF mostrar que os picos estão em terminais/alças longe do sítio, dá para refazer o RMSD da proteína **sem essas regiões** (ou só do domínio onde está o ligante).
+
+---
+
+## 10. Explicação dos comandos e opções
+
+### 10.1 — Comandos do GROMACS
+
+| Comando | Para que serve |
+|---|---|
+| `gmx trjconv` | Processa a trajetória: centraliza, corrige a periodicidade, seleciona átomos, extrai frames |
+| `gmx rms` | Calcula o RMSD (quanto a estrutura se afastou da estrutura inicial) ao longo do tempo |
+| `gmx rmsf` | Calcula o RMSF (quanto cada resíduo flutua em torno da sua posição média) |
+| `gmx select` | Cria um grupo de átomos a partir de uma regra (ex.: resíduos perto do ligante) |
+| `gmx distance` | Mede distâncias entre pontos/grupos ao longo do tempo |
+| `gmx make_ndx` | Cria/edita grupos no arquivo de índice (`index.ndx`) |
+
+### 10.2 — Opções usadas
+
+| Opção | Significado |
+|---|---|
+| `-s 8-md.tpr` | Arquivo da produção com a topologia e a estrutura de referência (frame inicial) |
+| `-f 8-md.xtc` / `-f 9-md_center.xtc` | Trajetória de entrada (original / centralizada) |
+| `-n index.ndx` | Arquivo com os grupos de átomos (Backbone, LMC, Protein_LMC...) |
+| `-o arquivo` | Arquivo de saída |
+| `-center` | Coloca o grupo escolhido no centro da caixa |
+| `-pbc mol` | Deixa as moléculas inteiras (sem pedaços "cortados" pela borda da caixa periódica) |
+| `-ur compact` | Representa a caixa na forma mais compacta (melhor para visualizar) |
+| `-skip 10` | Usa 1 a cada 10 frames (arquivo menor) |
+| `-dump 0` | Extrai só o frame no tempo 0 |
+| `-tu ns` | Eixo do tempo em nanossegundos (o padrão é ps) |
+| `-res` | (no `rmsf`) um valor por resíduo, em vez de por átomo |
+| `-select '...'` | Regra de seleção (ex.: `within 0.5 of resname LMC` = a até 0,5 nm = 5 Å do ligante) |
+| `-on pocket.ndx` | (no `select`) salva a seleção como grupo num arquivo de índice |
+| `-oall` | (no `distance`) salva a distância em cada frame |
+| `com of group 13` | Centro de massa do grupo 13 (o ligante) |
+
+### 10.3 — Como funciona o `echo "4 13" | gmx rms ...`
+
+O `gmx rms` pergunta **dois grupos**:
+
+1. **Grupo para o ajuste (*fit*)** — a estrutura de cada frame é girada/transladada para sobrepor esse grupo à referência. Ex.: `4` = Backbone.
+2. **Grupo para o cálculo** — o RMSD é calculado nesse grupo, depois do ajuste. Ex.: `13` = LMC.
+
+O `echo` responde as perguntas automaticamente. Por isso:
+
+| Comando | Ajuste em | RMSD de | O que mostra |
+|---|---|---|---|
+| `echo "4 4"` | Backbone | Backbone | Quanto a proteína mudou |
+| `echo "4 13"` | Backbone inteiro | Ligante | Movimento do ligante + da proteína (global) |
+| `echo "4 24"` | Backbone | Proteína + ligante | Complexo |
+| `echo "25 13"` | Bolsão | Ligante | Se o ligante ficou **no sítio** |
+| `echo "25 25"` | Bolsão | Bolsão | Se o sítio se deformou |
+| `echo "13 13"` | Ligante | Ligante | Mudança de conformação do próprio ligante |
+
+### 10.4 — Comandos auxiliares (Linux)
+
+| Comando | O que faz |
+|---|---|
+| `awk '!/^[#@]/{print $1, $2*10}' a.xvg > a_A.dat` | Ignora as linhas de cabeçalho do `.xvg` (que começam com `#` ou `@`) e multiplica a 2ª coluna por 10 (nm → Å) |
+| `awk -v t0=25 '$1>=t0{...}'` | Usa só os dados a partir de 25 ns para calcular média e desvio padrão |
+| `cat index.ndx pocket.ndx > index_pocket.ndx` | Junta os dois arquivos de índice num novo (o grupo do bolsão vira o último) |
+| `grep "\[" index.ndx \| awk '{print NR-1, $2}'` | Lista os grupos do índice com o número de cada um (contando do 0, como o GROMACS) |
+| `scp "usuario@servidor:/caminho/9-*_A.dat" .` | Copia arquivos do Vital para a pasta atual do seu computador |
+
+### 10.5 — Linhas do gnuplot
+
+| Linha | O que faz |
+|---|---|
+| `set terminal pdfcairo size 10,5 font "Arial,12"` | Gera PDF de 10 × 5 polegadas (trocar por `pngcairo` ou `svg` para outros formatos) |
+| `set output "arquivo.pdf"` | Nome do arquivo gerado |
+| `set xlabel` / `set ylabel` / `set title` | Textos dos eixos e título |
+| `set grid` | Linhas de grade no fundo |
+| `set key top left` / `unset key` | Posição da legenda / sem legenda |
+| `set multiplot layout 2,1` | Dois gráficos, um em cima do outro, no mesmo arquivo |
+| `plot "a.dat" with lines lw 2 lc rgb "red" title "..."` | Plota o arquivo como linha (`lw` = espessura, `lc` = cor, `title` = nome na legenda) |
+| `, \` no fim da linha | Continua o `plot` na linha de baixo (para mais de uma curva) |
+
+---
+
+## 11. Resultados parciais (~57 ns)
+
+### 11.1 — RMSD geral (`rmsd_dk2.pdf`)
+
+- **Proteína (backbone) e complexo:** sobem rápido até ~12 Å nos primeiros 15 ns, pico de ~15,5 Å perto de 35 ns, e depois oscilam entre ~11 e 13 Å. De ~40 ns em diante parecem começar a formar um platô (~11–12 Å). **Valor muito alto** em relação ao típico (1–3 Å).
+- **Complexo ≈ proteína:** esperado, pois o ligante tem 116 átomos e a proteína 10.342.
+- **Ligante (ajuste no backbone inteiro):** ~6–8 Å, mais estável depois de ~25 ns (~7 Å). Esse valor mistura o movimento da proteína com o do ligante, por isso foram feitas as análises do item 7.
+
+**Hipóteses para o RMSD alto da proteína:**
+
+1. TRPA1 é canal de membrana simulado **só em água** (região transmembrana sem bicamada).
+2. Tetrâmero simulado com **uma cadeia/fragmento** (~632 resíduos), sem as outras subunidades.
+3. Modelo **AlphaFold**: terminais e regiões de baixa confiança muito flexíveis.
+4. Movimento entre domínios (ex.: repetições de anquirina).
+
+### 11.2 — Análises complementares
+
+_(preencher com os gráficos `rmsf_dk2.pdf` e `ligante_sitio_dk2.pdf` e com as médias do item 7.7)_
+
+| Medida (a partir de 25 ns) | Valor parcial | Valor final (100 ns) |
+|---|---|---|
+| RMSD proteína | | |
+| RMSD ligante (ajuste: backbone inteiro) | | |
+| RMSD ligante (ajuste: bolsão) | | |
+| RMSD bolsão | | |
+| RMSD interno do ligante | | |
+| Distância ligante–bolsão | | |
