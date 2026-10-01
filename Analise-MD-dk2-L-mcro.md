@@ -488,15 +488,60 @@ O `echo` responde as perguntas automaticamente. Por isso:
 3. Modelo **AlphaFold**: terminais e regiões de baixa confiança muito flexíveis.
 4. Movimento entre domínios (ex.: repetições de anquirina).
 
-### 11.2 — Análises complementares
+### 11.2 — RMSF por resíduo (`rmsf_dk2.pdf`)
 
-_(preencher com os gráficos `rmsf_dk2.pdf` e `ligante_sitio_dk2.pdf` e com as médias do item 7.7)_
+Resíduos ~447–1078 (632 C-alpha).
 
-| Medida (a partir de 25 ns) | Valor parcial | Valor final (100 ns) |
+- **Regiões mais estáveis (~2–3 Å):** ~540–640, ~690–700, ~840–880 e ~950–990.
+- **Picos:** ~757 (**~15,5 Å**, o maior), ~745 (~9,5 Å), ~797 (~9 Å), ~828 (~9,3 Å), ~893 (~9,5 Å), ~928 (~11,7 Å).
+- **C-terminal (> ~1040):** sobe continuamente até **~21 Å**.
+- **N-terminal (~447–480):** ~6–7 Å.
+- Nenhuma região fica abaixo de ~2 Å → a proteína inteira está se movendo bastante.
+
+**Leitura provável** (numeração aproximada, conferir com a UniProt O75762 / estruturas de cryo-EM da TRPA1):
+
+- Os picos entre ~740 e ~930 coincidem com a região **transmembrana (S1–S6)**, principalmente as **alças entre as hélices** e a região do poro → sem membrana, essas alças ficam soltas na água.
+- O C-terminal (> ~1040) corresponde ao **coiled-coil** que, na estrutura nativa, se forma entre as 4 subunidades do tetrâmero → com uma cadeia só, ele fica sem apoio e se desfaz.
+- Isso reforça as hipóteses 1–3 do item 11.1 para o RMSD alto da proteína.
+
+### 11.3 — Ligante no sítio (`ligante_sitio_dk2.pdf`)
+
+> No gráfico parcial aparecem só 2 curvas no painel de cima (ligante com ajuste no backbone inteiro e no bolsão). As curvas do **RMSD do bolsão** (7.4) e do **RMSD interno do ligante** (7.5) ainda precisam ser geradas.
+
+**RMSD do ligante com ajuste no bolsão (azul-escuro):**
+
+| Período | RMSD | Distância ligante–bolsão |
 |---|---|---|
-| RMSD proteína | | |
-| RMSD ligante (ajuste: backbone inteiro) | | |
-| RMSD ligante (ajuste: bolsão) | | |
-| RMSD bolsão | | |
-| RMSD interno do ligante | | |
-| Distância ligante–bolsão | | |
+| 0–4 ns | ~5–6 Å | ~6–7 Å |
+| 4–19 ns | ~7–8 Å | **~9 Å** (ligante se afastou ~3 Å) |
+| ~19 ns | **queda brusca** | **volta para ~6 Å** |
+| 20–30 ns | ~4–5 Å | ~6 Å |
+| 30–57 ns | **~5,5–6 Å, estável** | **~6 Å, estável** (pico transitório ~8 Å perto de 38 ns) |
+
+**Interpretação parcial:**
+
+- O ligante **não saiu do sítio**: depois de ~20 ns a distância até o centro do bolsão fica estável em ~6 Å (parecida com a do início).
+- Entre ~4 e ~19 ns ele se **afastou parcialmente** (~9 Å) e depois **voltou** e se reacomodou.
+- O RMSD com ajuste no bolsão estabiliza em **~5,5–6 Å** → acima de 2–3 Å, ou seja, o ligante encontrou **uma pose diferente da pose do docking**, mas estável dentro do sítio.
+- A curva com ajuste no backbone inteiro (azul-claro) fica só ~1–2 Å acima da do bolsão → a diferença em relação ao docking vem principalmente do **próprio ligante**, e não só do movimento da proteína.
+- O ligante é grande e flexível (116 átomos) → parte do RMSD pode ser mudança de conformação interna (confirmar com o item 7.5).
+
+**Próximos passos sugeridos:**
+
+1. Gerar o RMSD interno do ligante (7.5) e o RMSD do bolsão (7.4).
+2. Olhar no VMD os tempos **~4 ns, ~19 ns e ~38 ns** (mudanças de pose).
+3. Comparar a pose estável (30–57 ns) com a pose do docking.
+4. Analisar contatos e ligações de hidrogênio ligante–proteína para identificar os resíduos que seguram a nova pose.
+
+### 11.4 — Tabela de valores (a partir de 25 ns)
+
+Valores parciais **estimados visualmente dos gráficos** — substituir pelos números do item 7.7.
+
+| Medida | Valor parcial (~57 ns) | Valor final (100 ns) |
+|---|---|---|
+| RMSD proteína | ~11–13 Å (estimado) | |
+| RMSD ligante (ajuste: backbone inteiro) | ~7–8 Å (estimado) | |
+| RMSD ligante (ajuste: bolsão) | ~5,5–6 Å (estimado) | |
+| RMSD bolsão | (gerar 7.4) | |
+| RMSD interno do ligante | (gerar 7.5) | |
+| Distância ligante–bolsão | ~6 Å (estimado) | |
