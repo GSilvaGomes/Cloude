@@ -1,4 +1,4 @@
-# Análise da Dinâmica Molecular
+# Análise da Dinâmica Molecular — PARCIAL (~57 ns)
 
 ## POSE DOCKING - L_mcro_TRPA1_dk2
 
@@ -8,7 +8,7 @@ Pasta no Vital: `/storage/zuleika/volume2/project/gisele_picolo/minicro_docking/
 Todos os comandos são rodados **dentro da pasta do sistema**. Nenhum deles para a MD — só leem os arquivos.
 
 > **STATUS: análise PARCIAL** — feita com a MD ainda rodando (~57 ns de 100 ns).
-> Quando a produção terminar, **refazer tudo** seguindo o roteiro abaixo com a trajetória completa.
+> Quando a produção terminar, usar o arquivo **`Analise-MD-dk2-L-mcro-final.md`** (roteiro completo da análise final).
 
 ### Roteiro para refazer com a MD final
 
