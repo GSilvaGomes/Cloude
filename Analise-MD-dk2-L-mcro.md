@@ -19,9 +19,11 @@ Todos os comandos são rodados **dentro da pasta do sistema**. Nenhum deles para
 | 3 | RMSD proteína / ligante / complexo (com números de grupo) | Vital | 6 |
 | 4 | Converter para Å | Vital | 3.3 |
 | 5 | RMSF, bolsão, RMSD no bolsão, RMSD interno, distância | Vital | 7.1 – 7.6 |
+| 5b | RMSF do ligante (interno e no sítio) | Vital | 12 |
+| 5c | Ligações de hidrogênio, contatos e frames das mudanças de pose | Vital | 13 |
 | 6 | Médias ± desvio na parte estável (ajustar `t0`) | Vital | 3.4 e 7.7 |
 | 7 | Copiar os `.dat` para o Ubuntu | Ubuntu | 7.8 |
-| 8 | Gerar os gráficos (`plot_rmsd.gp`, `plot_rmsf.gp`, `plot_lig_sitio.gp`) | Ubuntu | 4.2 e 8 |
+| 8 | Gerar os gráficos (`plot_rmsd.gp`, `plot_rmsf.gp`, `plot_lig_sitio.gp`, `plot_rmsf_lig.gp`, `plot_interacoes.gp`) | Ubuntu | 4.2, 8, 12 e 13 |
 | 9 | Interpretar e comparar com os resultados parciais | — | 5, 9 e 11 |
 
 > Ao refazer, os arquivos `9-*` são sobrescritos (o GROMACS guarda backups `#nome.1#`). Para manter os parciais, antes copie: `mkdir parcial_57ns && cp 9-* parcial_57ns/`.
@@ -553,3 +555,136 @@ Resíduos ~447–1078 (632 C-alpha).
 5. O RMSD do ligante com ajuste no backbone inteiro (7,41 Å) é maior porque inclui o movimento global da proteína — por isso a medida mais representativa para o ligante é a com ajuste no bolsão.
 
 **Resumo:** complexo **estável no sítio** — bolsão preservado e ligante ligado, porém em **pose rearranjada** em relação ao docking. Confirmar com os dados finais (100 ns) e com análise de contatos/ligações de hidrogênio e de clusters para descrever a nova pose.
+
+---
+
+## 12. RMSF do ligante (por átomo)
+
+O RMSF do item 7.1 é **só da proteína** (grupo 3, C-alpha, `-res`). Para o ligante (116 átomos) há duas versões:
+
+### 12.1 — Flexibilidade interna (quais partes da molécula balançam mais)
+
+O `gmx rmsf` sobrepõe o próprio ligante antes de calcular → mostra só o movimento **interno**.
+
+```bash
+echo "13" | gmx rmsf -s 8-md.tpr -f 9-md_center.xtc -n index.ndx -o 9-rmsf_lig.xvg -oq 9-rmsf_lig_bfac.pdb -b 25000
+awk '!/^[#@]/{print $1, $2*10}' 9-rmsf_lig.xvg > 9-rmsf_lig_A.dat
+```
+
+### 12.2 — Movimento dentro do sítio (quais partes "passeiam" mais no bolsão)
+
+Alinhar a trajetória pelo bolsão (grupo 25) e calcular sem novo ajuste:
+
+```bash
+echo "25 0" | gmx trjconv -s 8-md.tpr -f 9-md_center.xtc -n index_pocket.ndx -o 9-md_fit_pocket.xtc -fit rot+trans
+echo "13" | gmx rmsf -s 8-md.tpr -f 9-md_fit_pocket.xtc -n index.ndx -o 9-rmsf_lig_pocket.xvg -nofit -oq 9-rmsf_lig_pocket_bfac.pdb -b 25000
+awk '!/^[#@]/{print $1, $2*10}' 9-rmsf_lig_pocket.xvg > 9-rmsf_lig_pocket_A.dat
+```
+
+- `-b 25000`: usa só a parte a partir de 25 ns (25000 ps), a pose estável.
+- `-oq`: gera um `.pdb` com o RMSF na coluna B-factor → ver em cores na estrutura (VMD: *Coloring Method → Beta*; PyMOL: `spectrum b, blue_red`). Azul = rígido, vermelho = flexível.
+- Eixo x = número do átomo **no sistema** (~10343–10458, o ligante vem depois da proteína).
+
+### 12.3 — Copiar para o Ubuntu
+
+```bash
+scp "geniana_gomes@endereco_do_vital:/storage/zuleika/volume2/project/gisele_picolo/minicro_docking/MD/MD_L_mcro_TRPA1_dk2/9-rmsf_lig{,_pocket}_A.dat" .
+scp "geniana_gomes@endereco_do_vital:/storage/zuleika/volume2/project/gisele_picolo/minicro_docking/MD/MD_L_mcro_TRPA1_dk2/9-rmsf_lig*_bfac.pdb" .
+```
+
+### 12.4 — Gráfico
+
+`plot_rmsf_lig.gp`:
+
+```gnuplot
+set terminal pdfcairo size 10,5 font "Arial,12" enhanced
+set output "rmsf_ligante_dk2.pdf"
+set title "RMSF do ligante por átomo - L-mcro (dk2)"
+set xlabel "Átomo (número no sistema)"
+set ylabel "RMSF (Å)"
+set grid
+set key top left
+plot "9-rmsf_lig_A.dat"        with linespoints lw 2 pt 7 ps 0.5 lc rgb "blue"    title "Flexibilidade interna", \
+     "9-rmsf_lig_pocket_A.dat" with linespoints lw 2 pt 7 ps 0.5 lc rgb "#9ecae1" title "Movimento no sítio (ajuste: bolsão)"
+```
+
+```bash
+gnuplot plot_rmsf_lig.gp      # → rmsf_ligante_dk2.pdf
+```
+
+---
+
+## 13. Interações ligante–proteína (o que segura a nova pose)
+
+### 13.1 — Ligações de hidrogênio ao longo do tempo
+
+```bash
+echo "1 13" | gmx hbond -s 8-md.tpr -f 9-md_center.xtc -n index.ndx -num 9-hbond.xvg -tu ns
+awk '!/^[#@]/{print $1, $2}' 9-hbond.xvg > 9-hbond.dat
+```
+
+Grupos: 1 = Protein, 13 = LMC. Coluna 2 = número de ligações de H em cada frame.
+
+### 13.2 — Contatos (átomos a até 4 Å) e distância mínima
+
+```bash
+echo "1 13" | gmx mindist -s 8-md.tpr -f 9-md_center.xtc -n index.ndx -od 9-mindist.xvg -on 9-contatos.xvg -d 0.4 -tu ns
+awk '!/^[#@]/{print $1, $2}'    9-contatos.xvg > 9-contatos.dat
+awk '!/^[#@]/{print $1, $2*10}' 9-mindist.xvg  > 9-mindist_A.dat
+```
+
+### 13.3 — Médias (a partir de 25 ns)
+
+```bash
+for f in hbond contatos; do awk -v t0=25 -v n=$f '$1>=t0{s+=$2; q+=$2*$2; c++} END{m=s/c; printf "%-9s = %6.1f ± %5.1f\n", n, m, sqrt(q/c-m*m)}' 9-$f.dat; done
+```
+
+### 13.4 — Frames das mudanças de pose (ver no VMD/PyMOL)
+
+Tempos em ps: 0 (docking), 4 ns, 19 ns, 38 ns, 50 ns (pose estável).
+
+```bash
+for t in 0 4000 19000 38000 50000; do echo "24" | gmx trjconv -s 8-md.tpr -f 9-md_center.xtc -n index.ndx -o frame_${t}ps.pdb -dump $t; done
+```
+
+Abrir todos juntos e alinhar pela proteína para comparar a pose do ligante. No PyMOL, os resíduos a até 4 Å do ligante na pose estável:
+
+```
+load frame_50000ps.pdb
+select sitio, byres (polymer.protein within 4 of resn LMC)
+show sticks, sitio
+iterate sitio and name CA, print(resn, resi)
+```
+
+### 13.5 — Copiar para o Ubuntu
+
+```bash
+scp "geniana_gomes@endereco_do_vital:/storage/zuleika/volume2/project/gisele_picolo/minicro_docking/MD/MD_L_mcro_TRPA1_dk2/{9-hbond.dat,9-contatos.dat,9-mindist_A.dat,frame_*ps.pdb}" .
+```
+
+### 13.6 — Gráfico
+
+`plot_interacoes.gp`:
+
+```gnuplot
+set terminal pdfcairo size 10,8 font "Arial,12" enhanced
+set output "interacoes_dk2.pdf"
+set multiplot layout 2,1 title "Interações L-mcro – TRPA1 (dk2)"
+
+set xlabel "Tempo (ns)"
+set grid
+unset key
+set ylabel "Ligações de H"
+plot "9-hbond.dat" with lines lw 1.5 lc rgb "blue"
+
+set ylabel "Contatos (< 4 Å)"
+plot "9-contatos.dat" with lines lw 1.5 lc rgb "red"
+
+unset multiplot
+```
+
+```bash
+gnuplot plot_interacoes.gp    # → interacoes_dk2.pdf
+```
+
+**Como interpretar:** número de ligações de H e de contatos **estável** (sem cair a zero) depois de ~20 ns → ligante bem ancorado na nova pose. Quedas que coincidem com os saltos de RMSD (~4, ~19, ~38 ns) mostram quando a pose mudou.
